@@ -58,6 +58,19 @@ class AboutPage extends Model
             || $this->mediaSignature(true) !== $this->mediaSignature(false);
     }
 
+    /**
+     * Foto di bawah visi dan misi (peran `gallery`), berurutan, hanya yang siap tampil. Keterangan tiap foto
+     * ada di `caption`. Versi published untuk website, draft untuk Preview admin.
+     *
+     * @return Collection<int, MediaUsage>
+     */
+    public function visionPhotos(bool $draft): Collection
+    {
+        return $this->usages($draft, self::ROLE_GALLERY)
+            ->filter(fn (MediaUsage $usage): bool => $usage->file->isReady())
+            ->values();
+    }
+
     /** Peran gambar untuk foto satu anggota tim (kolom `role` maksimal 30 karakter; id maksimal 20). */
     public static function teamRole(string $memberId): string
     {

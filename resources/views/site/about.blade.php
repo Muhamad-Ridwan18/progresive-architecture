@@ -9,7 +9,10 @@
 
     // Bagian kosong tidak ditampilkan (SRS 3.5). Tim ada di bagian "Team" halaman ini (kartu yang membuka profil dengan halus).
     $hasHistory = $history['body'] || $history['milestones'];
-    $hasVisionMission = $vision || $mission;
+    $hasVisionMission = $vision || $mission || $visionPhotos->isNotEmpty();
+    // Label bagian: "Mission" hanya bila misi saja yang ada; selain itu "Vision" (termasuk bila hanya ada foto).
+    $visionLabel = $vision && $mission ? 'Vision & Mission' : (! $vision && $mission ? 'Mission' : 'Vision');
+    $photoColumns = $visionPhotos->count() >= 3 ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2';
     $gap = 'mt-20 md:mt-28';
     $statColumns = [1 => 'md:grid-cols-1', 2 => 'md:grid-cols-2', 3 => 'md:grid-cols-3', 4 => 'md:grid-cols-4'][min(max(count($content['statistics']), 1), 4)];
 
@@ -65,7 +68,7 @@
     {{-- Vision & Mission --}}
     @if ($hasVisionMission)
         <section class="container-page {{ $gap }} grid gap-6 border-t border-line pt-6 md:grid-cols-12 md:gap-x-6">
-            <h2 class="label text-ink-muted md:col-span-3">{{ $vision && $mission ? 'Vision & Mission' : ($vision ? 'Vision' : 'Mission') }}</h2>
+            <h2 class="label text-ink-muted md:col-span-3">{{ $visionLabel }}</h2>
             <div class="md:col-span-8">
                 @if ($vision)
                     <p class="max-w-[40ch] text-[1.5rem] font-medium leading-[1.3] tracking-[-0.01em] md:text-[2rem]">{{ $visionParts[0] }}</p>
@@ -77,6 +80,32 @@
                     <x-prose :text="$mission" class="{{ $vision ? 'mt-10' : '' }} max-w-[68ch] text-[1.0625rem] leading-[1.7]" />
                 @endif
             </div>
+
+            {{-- Foto di bawah visi dan misi, tiap foto dengan keterangan bertanda kotak kecil (mockup). --}}
+            @if ($visionPhotos->isNotEmpty())
+                <ul class="grid gap-x-6 gap-y-10 md:col-span-12 md:mt-6 {{ $photoColumns }}" aria-label="Vision photos">
+                    @foreach ($visionPhotos as $photo)
+                        <li>
+                            <figure>
+                                <div class="aspect-[4/3] overflow-hidden bg-bg-soft">
+                                    <x-responsive-image
+                                        :usage="$photo"
+                                        :alt="$photo->caption ?: $visionLabel"
+                                        sizes="(min-width: 1024px) 31vw, (min-width: 640px) 48vw, 100vw"
+                                        cover
+                                    />
+                                </div>
+                                @if ($photo->caption)
+                                    <figcaption class="mt-3 flex items-start gap-3 text-small uppercase leading-snug tracking-[0.04em]">
+                                        <span aria-hidden="true" class="mt-[0.45em] size-1.5 shrink-0 bg-ink"></span>
+                                        <span>{{ $photo->caption }}</span>
+                                    </figcaption>
+                                @endif
+                            </figure>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
         </section>
     @endif
 

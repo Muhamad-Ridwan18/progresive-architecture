@@ -131,6 +131,17 @@ class ManageAboutUs extends Page
                 ->schema([
                     self::auto(Textarea::make('vision_mission.vision')->label('Vision')->rows(5)->maxLength(2000)),
                     self::auto(Textarea::make('vision_mission.mission')->label('Mission')->rows(5)->maxLength(2000)),
+                    Section::make('Photos')
+                        ->description('Opsional. Foto tampil sebaris di bawah visi dan misi; isi keterangan singkat di bawah tiap foto (mis. "Tropical Future"). Urutan mengikuti daftar. Foto ikut berubah bersama Publish.')
+                        ->compact()
+                        ->columnSpanFull()
+                        ->schema([
+                            Livewire::make(ProjectMediaManager::class, fn (): array => [
+                                'projectId' => AboutPage::current()->getKey(),
+                                'role' => AboutPage::ROLE_GALLERY,
+                                'kind' => 'about',
+                            ])->key('vision-photos'),
+                        ]),
                 ]),
 
             Section::make('Company Values')

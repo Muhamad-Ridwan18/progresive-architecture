@@ -25,6 +25,7 @@ class AboutController extends Controller
         return response()->view('site.about', [
             'content' => $content,
             'photos' => $page->teamPhotos(draft: false),
+            'visionPhotos' => $page->visionPhotos(draft: false),
             'preview' => false,
         ] + $this->teamData($request, $content['team']));
     }
@@ -65,6 +66,7 @@ class AboutController extends Controller
             ->view('site.about', [
                 'content' => $page->draftContent(),
                 'photos' => $page->teamPhotos(draft: true),
+                'visionPhotos' => $page->visionPhotos(draft: true),
                 'preview' => true,
             ] + $this->teamData($request, $page->draftContent()['team']))
             ->header('X-Robots-Tag', 'noindex, nofollow')
