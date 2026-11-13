@@ -346,6 +346,22 @@ class PublicSiteTest extends TestCase
             ->assertSee('https://instagram.com/acme', false);
     }
 
+    public function test_footer_has_a_discreet_staff_login_link_on_every_public_page(): void
+    {
+        $loginUrl = route('filament.admin.auth.login');
+
+        foreach (['/', '/contact', '/about'] as $url) {
+            $this->get($url)
+                ->assertOk()
+                ->assertSee('Staff login')
+                ->assertSee('href="'.$loginUrl.'" rel="nofollow"', false);
+        }
+
+        // Pintu itu hanya tautan: dashboard tetap menuntut login, dan robots.txt melarang penelusurannya.
+        $this->get('/admin')->assertRedirect($loginUrl);
+        $this->get('/robots.txt')->assertSee('Disallow: /admin');
+    }
+
     public function test_social_links_are_icon_only_logos_in_the_menu_and_footer(): void
     {
         Settings::setMany([

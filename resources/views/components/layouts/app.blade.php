@@ -239,7 +239,12 @@
         </div>
         <div class="border-t border-line">
             <div class="container-page flex flex-wrap items-center justify-between gap-x-8 gap-y-2 py-5 text-small text-ink-muted">
-                <p>&copy; {{ date('Y') }} {{ $site['company_name'] ?: $siteName }}. All rights reserved.</p>
+                <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+                    <p>&copy; {{ date('Y') }} {{ $site['company_name'] ?: $siteName }}. All rights reserved.</p>
+                    {{-- Pintu masuk dashboard untuk tim: kecil dan tidak mencolok. nofollow agar mesin pencari tidak menelusurinya
+                         (robots.txt juga melarang /admin). Perlindungan sebenarnya ada di kata sandi dan pembatasan percobaan login. --}}
+                    <a href="{{ route('filament.admin.auth.login') }}" rel="nofollow" class="hover:text-ink hover:underline">Staff login</a>
+                </div>
                 {{-- Kredit pembuat website: wajib ada di footer dan tidak dapat diubah dari dashboard. --}}
                 <p>Design by Webyouneed</p>
             </div>
