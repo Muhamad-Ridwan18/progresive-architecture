@@ -1,0 +1,477 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import 'photoswipe/dist/photoswipe.css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+/*
+ * Token visual. Sumber kebenaran: Documents/STYLE GUIDE.md.
+ * Nilai warna dan font masih USULAN (belum diputuskan klien); ubah di sini dan style guide secara bersamaan.
+ */
+@theme {
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    --color-bg: #ffffff;
+    --color-bg-soft: #f7f6f3;
+    --color-ink: #111111;
+    --color-ink-muted: #6b6b6b;
+    --color-line: #e4e2dd;
+    --color-overlay: #0b0b0b;
+
+    --text-display: clamp(2.25rem, 1.4rem + 3vw, 3.5rem);
+    --text-display--line-height: 1.1;
+    --text-h1: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+    --text-h1--line-height: 1.15;
+    --text-h2: clamp(1.375rem, 1.1rem + 1vw, 1.75rem);
+    --text-h2--line-height: 1.25;
+    --text-h3: 1.125rem;
+    --text-h3--line-height: 1.35;
+    --text-body: 1rem;
+    --text-body--line-height: 1.6;
+    --text-small: 0.875rem;
+    --text-small--line-height: 1.5;
+    --text-label: 0.75rem;
+    --text-label--line-height: 1.3;
+
+    --header-height: 4rem;
+    --category-bar-height: 3rem;
+}
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        background-color: var(--color-bg);
+        color: var(--color-ink);
+        font-family: var(--font-sans);
+        font-size: var(--text-body);
+        line-height: var(--text-body--line-height);
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Fokus keyboard selalu terlihat (WCAG 2.4.7). */
+    :focus-visible {
+        outline: 2px solid var(--color-ink);
+        outline-offset: 3px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+@layer components {
+    .container-page {
+        width: 100%;
+        max-width: 90rem;
+        margin-inline: auto;
+        padding-inline: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+        .container-page {
+            padding-inline: 3rem;
+        }
+    }
+
+    /* Label kecil huruf besar: kategori, navigasi (STYLE GUIDE 3). */
+    .label {
+        font-size: var(--text-label);
+        line-height: var(--text-label--line-height);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .skeleton {
+        background-color: var(--color-bg-soft);
+        animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes skeleton-pulse {
+        0%,
+        100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.55;
+        }
+    }
+
+    /* Bar kategori: gulir horizontal, tanpa scrollbar terlihat, mendukung swipe. */
+    .category-bar {
+        display: flex;
+        gap: 1.75rem;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .category-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .category-bar a {
+        flex: none;
+        scroll-snap-align: start;
+        display: inline-flex;
+        align-items: center;
+        height: var(--category-bar-height);
+        border-bottom: 2px solid transparent;
+        color: var(--color-ink-muted);
+        transition: color 150ms ease-out, border-color 150ms ease-out;
+    }
+
+    .category-bar a:hover,
+    .category-bar a[aria-current='true'] {
+        color: var(--color-ink);
+    }
+
+    .category-bar a[aria-current='true'] {
+        border-bottom-color: var(--color-ink);
+    }
+
+}
+
+/*
+ * Infinite scroll menambah konten DI ATAS footer. Jika pengguna menggulir lebih cepat dari pemuatan
+ * dan footer sudah terlihat, tanpa ini footer terlempar ke bawah (layout shift besar). Dengan
+ * mengeluarkan konten halaman daftar dari kandidat "scroll anchoring", browser memakai footer
+ * sebagai jangkar dan menjaganya tetap di tempat selama konten baru masuk di atasnya.
+ *
+ * Pengecualian harus di level <main>, bukan hanya di dalam grid: algoritma anchoring turun ke
+ * elemen yang terlihat sebagian, dan bila semua keturunannya dikecualikan, pembungkusnya sendiri
+ * menjadi jangkar (posisi atasnya tidak berubah, sehingga tidak ada penyesuaian).
+ */
+body:has(#project-grid) main {
+    overflow-anchor: none;
+}
+
+/*
+ * Tanpa JavaScript tersedia pagination biasa; dengan JavaScript disembunyikan (infinite scroll).
+ * Sengaja di LUAR @layer: aturan tanpa layer mengalahkan utility Tailwind (mis. `flex`) yang
+ * kalau tidak, membuat navigasi ini tetap terlihat walau JavaScript aktif.
+ */
+.js .pagination-fallback {
+    display: none;
+}
+
+/* Lightbox: latar gelap sesuai style guide, indikator posisi "03/24" (lihat js/lightbox.js). */
+:root {
+    --pswp-bg: var(--color-overlay);
+}
+
+.pswp__counter {
+    display: none;
+}
+
+.pswp__position-indicator {
+    align-self: center;
+    margin-inline-start: 1rem;
+    color: #fff;
+    font-size: var(--text-small);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+}
+
+/*
+ * Interaksi (mockup "Progressive Architecture"): semua peningkatan bertahap. Tanpa JavaScript atau
+ * browser lama, konten tetap tampil normal. Durasi 150-250 ms ease-out (STYLE GUIDE 7).
+ */
+
+/* Transisi lintas halaman: cover tile "terbang" ke cover halaman detail (View Transitions API). */
+@media (prefers-reduced-motion: no-preference) {
+    @view-transition {
+        navigation: auto;
+    }
+
+    /* Peralihan lembut: halaman lama memudar pelan, halaman baru muncul sedikit terlambat sambil naik tipis. */
+    ::view-transition-old(root) {
+        animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both vt-fade-out;
+    }
+
+    ::view-transition-new(root) {
+        animation: 560ms cubic-bezier(0.2, 0.7, 0.2, 1) 120ms both vt-fade-in;
+    }
+
+    /* Cover bergeser perlahan dan berhenti halus (ease-out panjang) alih-alih tersentak. */
+    ::view-transition-group(project-cover) {
+        animation-duration: 700ms;
+        animation-timing-function: cubic-bezier(0.22, 0.8, 0.2, 1);
+    }
+
+    ::view-transition-old(project-cover),
+    ::view-transition-new(project-cover) {
+        animation-duration: 700ms;
+    }
+
+    @keyframes vt-fade-out {
+        to {
+            opacity: 0;
+        }
+    }
+
+    @keyframes vt-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+    }
+}
+
+/* Reveal halus saat tile masuk layar. Hanya opacity/transform, jadi tidak menggeser layout (CLS). */
+.js [data-reveal] {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 250ms ease-out, transform 250ms ease-out;
+}
+
+.js [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+    /* Kolom kedua masuk sedikit setelah kolom pertama: tile muncul bergantian, bukan sekaligus. */
+    transition-delay: calc(var(--d, 0) * 90ms);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    /* Masuk bertahap saat halaman dibuka (detail proyek): naik dan memudar, bergantian menurut --i. */
+    [data-enter] {
+        animation: enter-rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+        animation-delay: calc(var(--i, 0) * 70ms + 80ms);
+    }
+
+    /* Umpan balik instan saat tautan proyek diklik: tile lain meredup selagi halaman berikutnya dimuat. */
+    a[data-project-link],
+    a[data-project-nav] {
+        transition: opacity 220ms ease-out;
+    }
+
+    .is-navigating a[data-project-link]:not(.is-chosen),
+    .is-navigating a[data-project-nav]:not(.is-chosen) {
+        opacity: 0.35;
+    }
+
+    /* Garis kemajuan tipis di atas layar: menandakan halaman sedang dimuat. */
+    #nav-progress {
+        position: fixed;
+        inset: 0 0 auto 0;
+        z-index: 70;
+        height: 2px;
+        background: var(--color-ink);
+        transform: scaleX(0);
+        transform-origin: left;
+        pointer-events: none;
+    }
+
+    .is-navigating #nav-progress {
+        animation: nav-progress 2.4s cubic-bezier(0.1, 0.6, 0.2, 1) forwards;
+    }
+}
+
+@keyframes enter-rise {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+}
+
+@keyframes nav-progress {
+    to {
+        transform: scaleX(0.85);
+    }
+}
+
+/* Tombol melayang Back to top: tersembunyi sampai halaman di-scroll, lalu naik halus dan memudar masuk. */
+#back-to-top {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+}
+
+#back-to-top[data-visible='true'] {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    #back-to-top {
+        transition: opacity 250ms ease-out, transform 250ms ease-out, visibility 0s 250ms, background-color 150ms, color 150ms;
+    }
+
+    #back-to-top[data-visible='true'] {
+        transition: opacity 250ms ease-out, transform 250ms ease-out, visibility 0s, background-color 150ms, color 150ms;
+    }
+}
+
+/* Team: profil terbuka dengan halus (tinggi 0 -> penuh) di atas kartu; isi memudar masuk sedikit setelahnya. */
+.team-drawer {
+    display: grid;
+    grid-template-rows: 0fr;
+    visibility: hidden;
+}
+
+.team-drawer[data-open='true'] {
+    grid-template-rows: 1fr;
+    visibility: visible;
+}
+
+.team-drawer > div {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.team-drawer > div > div {
+    opacity: 0;
+}
+
+.team-drawer[data-open='true'] > div > div {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    /* Menutup: tinggi mengecil dulu, baru disembunyikan dari pembaca layar dan fokus (visibility tertunda). */
+    .team-drawer {
+        transition: grid-template-rows 600ms cubic-bezier(0.22, 0.8, 0.2, 1), visibility 0s 600ms;
+    }
+
+    .team-drawer[data-open='true'] {
+        transition: grid-template-rows 600ms cubic-bezier(0.22, 0.8, 0.2, 1), visibility 0s;
+    }
+
+    .team-drawer > div > div {
+        transition: opacity 300ms ease-out;
+    }
+
+    .team-drawer[data-open='true'] > div > div {
+        transition: opacity 500ms ease-out 180ms;
+    }
+}
+
+.member-name {
+    text-underline-offset: 6px;
+}
+
+[data-member][aria-current='true'] .member-name {
+    text-decoration: underline;
+}
+
+/* Menu kecil: panel turun sedikit sambil memudar, tautan naik bergantian. */
+#site-menu:not([hidden]) > div > div,
+#search-overlay:not([hidden]) > div > div {
+    animation: menu-drop 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+#site-menu:not([hidden]) nav a {
+    /* backwards (bukan both): setelah animasi selesai, gaya biasa (termasuk efek hover di bawah) berlaku lagi. */
+    animation: menu-rise 300ms ease-out backwards;
+    animation-delay: calc(var(--i, 0) * 40ms + 60ms);
+    transition: opacity 200ms ease-out;
+}
+
+/* Mockup: saat menu disorot, item lain meredup dan yang disorot tetap terang. */
+#site-menu nav:hover a {
+    opacity: 0.35;
+}
+
+#site-menu nav:hover a:hover,
+#site-menu nav:hover a:focus-visible {
+    opacity: 1;
+}
+
+@keyframes menu-drop {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes menu-rise {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+}
+
+/*
+ * Isi artikel (HTML dari editor rich text, SRS FR-CM-030): heading, daftar, kutipan, tabel, gambar sisipan.
+ * Lebar baris dibatasi agar nyaman dibaca (STYLE GUIDE: 60-75 karakter).
+ */
+.article-body {
+    max-width: 68ch;
+    font-size: 1.0625rem;
+    line-height: 1.7;
+}
+
+.article-body > * + * {
+    margin-top: 1.25rem;
+}
+
+.article-body h2 {
+    margin-top: 2.5rem;
+    font-size: var(--text-h2);
+    line-height: var(--text-h2--line-height);
+    font-weight: 600;
+}
+
+.article-body h3 {
+    margin-top: 2rem;
+    font-size: var(--text-h3);
+    font-weight: 600;
+}
+
+.article-body ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+}
+
+.article-body ol {
+    list-style: decimal;
+    padding-left: 1.5rem;
+}
+
+.article-body a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.article-body blockquote {
+    border-left: 2px solid var(--color-ink);
+    padding-left: 1.25rem;
+    font-size: 1.25rem;
+    line-height: 1.5;
+}
+
+.article-body img {
+    height: auto;
+    max-width: 100%;
+}
+
+.article-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-small);
+}
+
+.article-body th,
+.article-body td {
+    border: 1px solid var(--color-line);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+
+.article-body th {
+    background: var(--color-bg-soft);
+    font-weight: 600;
+}
