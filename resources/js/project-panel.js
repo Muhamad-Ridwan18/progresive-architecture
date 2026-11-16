@@ -80,7 +80,7 @@ if (grid) {
                 const index = slides.findIndex((slide) => slide.offsetLeft + slide.offsetWidth > left);
 
                 if (count) {
-                    count.textContent = String(Math.max(0, index) + 1);
+                    count.textContent = String(Math.max(0, index) + 1).padStart(2, '0');
                 }
             },
             { passive: true },

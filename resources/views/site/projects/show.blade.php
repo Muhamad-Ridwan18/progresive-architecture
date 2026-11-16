@@ -84,6 +84,20 @@
                                 <figcaption class="mt-2 text-small text-ink-muted">{{ $photo->caption }}</figcaption>
                             @endif
                         </figure>
+
+                        {{-- Teks tambahan setelah foto (narasi atau kutipan), selebar baris. --}}
+                        @if ($photo->note)
+                            <div class="col-span-1 md:col-span-12">
+                                @if ($photo->note_by)
+                                    <blockquote class="max-w-[48ch] md:ml-[25%]">
+                                        <p class="whitespace-pre-line text-[1.5rem] leading-[1.35] tracking-[-0.01em]">&ldquo;{{ $photo->note }}&rdquo;</p>
+                                        <footer class="mt-4 text-[0.75rem] uppercase tracking-[0.08em] text-ink-muted">{{ $photo->note_by }}</footer>
+                                    </blockquote>
+                                @else
+                                    <x-prose :text="$photo->note" class="max-w-[62ch] text-[1.0625rem] leading-[1.7] md:ml-[25%]" />
+                                @endif
+                            </div>
+                        @endif
                     @endforeach
                 </div>
             </section>

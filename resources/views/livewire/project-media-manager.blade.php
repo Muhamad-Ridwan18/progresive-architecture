@@ -114,6 +114,15 @@
                            value="{{ $item->caption }}"
                            wire:change="updateMeta({{ $item->id }}, 'caption', $event.target.value)"
                            style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
+
+                    {{-- Teks yang tampil tepat setelah foto ini di deretan foto proyek (seperti narasi atau kutipan di BIG). --}}
+                    <textarea placeholder="Teks setelah foto ini (opsional): narasi atau kutipan" rows="3" maxlength="3000"
+                              wire:change="updateMeta({{ $item->id }}, 'note', $event.target.value)"
+                              style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent;resize:vertical">{{ $item->note }}</textarea>
+                    <input type="text" placeholder="Pengucap kutipan (opsional), mis. Nama, Jabatan" maxlength="255"
+                           value="{{ $item->note_by }}"
+                           wire:change="updateMeta({{ $item->id }}, 'note_by', $event.target.value)"
+                           style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
                 @endif
 
                 <div style="display:flex;gap:6px;flex-wrap:wrap">

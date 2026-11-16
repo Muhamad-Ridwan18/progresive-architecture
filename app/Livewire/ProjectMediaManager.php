@@ -158,11 +158,12 @@ class ProjectMediaManager extends Component
     {
         $this->authorizeAdmin();
 
-        if (! in_array($field, ['alt_text', 'caption'], true)) {
+        if (! in_array($field, ['alt_text', 'caption', 'note', 'note_by'], true)) {
             return;
         }
 
-        $value = $value === null ? null : mb_substr(trim($value), 0, $field === 'alt_text' ? 255 : 1000);
+        $limit = ['alt_text' => 255, 'caption' => 1000, 'note' => 3000, 'note_by' => 255][$field];
+        $value = $value === null ? null : mb_substr(trim($value), 0, $limit);
 
         $this->usage($usageId)->update([$field => $value === '' ? null : $value]);
 

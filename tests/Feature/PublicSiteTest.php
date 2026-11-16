@@ -409,7 +409,7 @@ class PublicSiteTest extends TestCase
         $project = $this->published('Rumah Panel', null, ['description' => 'Narasi singkat proyek.', 'location' => 'Bandung', 'client' => 'Klien Satu']);
         app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover', ['alt_text' => 'Fasad']);
         foreach ([2, 3] as $seed) {
-            app(AttachMedia::class)->handle($this->media($seed), $project->fresh(), 'gallery', ['sort_order' => $seed]);
+            app(AttachMedia::class)->handle($this->media($seed), $project->fresh(), 'gallery', ['sort_order' => $seed, 'caption' => "Keterangan foto {$seed}"]);
         }
         app(PublishProject::class)->handle($project->fresh());
 
@@ -424,12 +424,38 @@ class PublicSiteTest extends TestCase
             ->assertSee('Narasi singkat proyek.')
             ->assertSee('Klien Satu')
             ->assertSee('data-panel-scroller', false)
-            ->assertSee('</span> / 3', false)
+            ->assertSee('Keterangan foto 2')
+            ->assertSee('Keterangan foto 3')
+            ->assertSee('</span> / 03', false)
             ->assertSee(route('projects.show', $project->slug), false)
             ->getContent();
 
         // Fragmen, bukan halaman penuh.
         $this->assertStringNotContainsString('<html', $panel);
+    }
+
+    public function test_text_added_after_a_photo_shows_in_the_strip_as_narrative_or_quote(): void
+    {
+        $project = $this->published('Rumah Teks');
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
+        app(AttachMedia::class)->handle($this->media(2), $project->fresh(), 'gallery', ['sort_order' => 1, 'note' => 'Narasi setelah foto kedua.']);
+        app(AttachMedia::class)->handle($this->media(3), $project->fresh(), 'gallery', ['sort_order' => 2, 'note' => 'Rumah ini bernapas.', 'note_by' => 'Hilmi, Founder']);
+        app(PublishProject::class)->handle($project->fresh());
+
+        $panel = $this->get(route('projects.panel', $project->slug))->assertOk()
+            ->assertSee('Narasi setelah foto kedua.')
+            ->assertSee('Rumah ini bernapas.')
+            ->assertSee('Hilmi, Founder')
+            ->assertSee('01', false)
+            ->getContent();
+
+        // Kutipan tampil dengan tanda kutip; teks biasa tidak.
+        $this->assertStringContainsString('&ldquo;Rumah ini bernapas.&rdquo;', $panel);
+        $this->assertStringNotContainsString('&ldquo;Narasi setelah foto kedua.', $panel);
+
+        $this->get(route('projects.show', $project->slug))->assertOk()
+            ->assertSee('Narasi setelah foto kedua.')
+            ->assertSee('Hilmi, Founder');
     }
 
     public function test_panel_is_not_available_for_unpublished_projects(): void

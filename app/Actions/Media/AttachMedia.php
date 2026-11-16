@@ -31,6 +31,8 @@ class AttachMedia
             'sort_order' => $attributes['sort_order'] ?? 0,
             'alt_text' => $attributes['alt_text'] ?? null,
             'caption' => $attributes['caption'] ?? null,
+            'note' => $attributes['note'] ?? null,
+            'note_by' => $attributes['note_by'] ?? null,
             'focal' => $attributes['focal'] ?? null,
         ]);
     }

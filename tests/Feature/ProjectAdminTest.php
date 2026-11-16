@@ -208,6 +208,23 @@ class ProjectAdminTest extends TestCase
             ->assertSee('belum tampil di website sampai Anda menekan Publish');
     }
 
+    public function test_text_after_a_photo_is_edited_in_the_media_manager_and_follows_the_draft_flow(): void
+    {
+        $p = $this->project();
+        $m = $this->manager($p, 'gallery')->set('uploads', [$this->photo('a.jpg')]);
+        $p = app(PublishProject::class)->handle($p->fresh());
+        $usage = $p->usages(draft: true, role: 'gallery')->first();
+
+        $this->assertSame(ProjectStatus::Published, $p->fresh()->status);
+
+        $m->call('updateMeta', $usage->id, 'note', 'Narasi setelah foto.')
+            ->call('updateMeta', $usage->id, 'note_by', 'Hilmi, Founder');
+
+        $this->assertSame('Narasi setelah foto.', $usage->fresh()->note);
+        $this->assertSame('Hilmi, Founder', $usage->fresh()->note_by);
+        $this->assertSame(ProjectStatus::UnpublishedChanges, $p->fresh()->status, 'Teks baru adalah perubahan yang belum dipublikasikan.');
+    }
+
     // ---------------------------------------------------------------- penanda perubahan
 
     public function test_editor_summarises_what_has_changed_since_publish(): void
