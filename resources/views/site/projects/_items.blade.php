@@ -9,7 +9,7 @@
     @php $pattern = GridPattern::project($offset + $i); @endphp
 
     <article @if (($offset + $i) >= 2) data-reveal @endif style="--d: {{ ($offset + $i) % 2 }}" class="col-span-1 {{ $pattern['col'] }} {{ $pattern['offset'] }}">
-        <a href="{{ $p->url() }}" data-project-link class="group block">
+        <a href="{{ $p->url() }}" data-project-link data-slug="{{ $p->slug }}" data-panel="{{ route('projects.panel', $p->slug) }}" aria-expanded="false" class="group block">
             <div data-cover class="{{ $pattern['ratio'] }} overflow-hidden bg-bg-soft">
                 @if ($p->cover)
                     <x-responsive-image

@@ -129,6 +129,7 @@
                     <span class="block w-6 space-y-1.5" aria-hidden="true">
                         <span class="block h-0.5 bg-ink"></span>
                         <span class="block h-0.5 bg-ink"></span>
+                        <span class="block h-0.5 bg-ink"></span>
                     </span>
                 </button>
             </div>

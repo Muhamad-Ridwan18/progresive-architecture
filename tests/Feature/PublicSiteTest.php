@@ -396,6 +396,51 @@ class PublicSiteTest extends TestCase
         }
     }
 
+    public function test_menu_button_is_a_three_line_hamburger(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+        $button = substr($html, strpos($html, 'id="menu-toggle"'), 700);
+
+        $this->assertSame(3, substr_count($button, 'block h-0.5 bg-ink'));
+    }
+
+    public function test_project_opens_in_place_from_the_list_through_a_panel_fragment(): void
+    {
+        $project = $this->published('Rumah Panel', null, ['description' => 'Narasi singkat proyek.', 'location' => 'Bandung', 'client' => 'Klien Satu']);
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover', ['alt_text' => 'Fasad']);
+        foreach ([2, 3] as $seed) {
+            app(AttachMedia::class)->handle($this->media($seed), $project->fresh(), 'gallery', ['sort_order' => $seed]);
+        }
+        app(PublishProject::class)->handle($project->fresh());
+
+        // Tile membawa alamat panel; tanpa JavaScript tautannya tetap ke halaman detail.
+        $this->get('/')->assertOk()
+            ->assertSee('data-panel="'.route('projects.panel', $project->slug).'"', false)
+            ->assertSee('href="'.route('projects.show', $project->slug).'"', false);
+
+        $panel = $this->get(route('projects.panel', $project->slug))->assertOk()
+            ->assertSee('data-project-panel', false)
+            ->assertSee('Rumah Panel')
+            ->assertSee('Narasi singkat proyek.')
+            ->assertSee('Klien Satu')
+            ->assertSee('data-panel-scroller', false)
+            ->assertSee('</span> / 3', false)
+            ->assertSee(route('projects.show', $project->slug), false)
+            ->getContent();
+
+        // Fragmen, bukan halaman penuh.
+        $this->assertStringNotContainsString('<html', $panel);
+    }
+
+    public function test_panel_is_not_available_for_unpublished_projects(): void
+    {
+        $live = $this->published('Rumah Live');
+        $draft = app(CreateProject::class)->handle(['name' => 'Rumah Draft', 'category_id' => $live->category_id]);
+
+        $this->get(route('projects.panel', $draft->slug))->assertNotFound();
+        $this->get('/projects/tidak-ada/panel')->assertNotFound();
+    }
+
     public function test_footer_always_credits_webyouneed(): void
     {
         $this->get('/')->assertOk()->assertSee('Design by Webyouneed');

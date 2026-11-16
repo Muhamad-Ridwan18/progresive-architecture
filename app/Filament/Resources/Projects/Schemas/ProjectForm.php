@@ -75,6 +75,12 @@ class ProjectForm
                     self::autosave(TextInput::make('stage')->label('Status')->placeholder('Complete, On going, ...')->maxLength(40)),
                 ]),
 
+            // Hanya di halaman Create: apa yang terjadi setelah proyek dibuat.
+            Callout::make('Setelah dibuat')
+                ->description('Anda langsung diarahkan ke editor proyek. Status awal proyek adalah Draft dan belum tampil di website sampai Anda menekan Publish.')
+                ->info()
+                ->visibleOn('create'),
+
             Section::make('Cover image')
                 ->description('Gambar utama proyek. Klik gambar untuk menentukan titik fokus pemotongan.')
                 ->visibleOn('edit')

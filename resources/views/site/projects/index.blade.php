@@ -3,13 +3,6 @@
     <div class="container-page">
         <h1 class="sr-only">Projects{{ $active ? ' — '.$active->name : '' }}</h1>
 
-        {{-- Pencarian proyek (mockup): mengirim ke halaman hasil; tanpa JavaScript tetap bekerja. --}}
-        <form method="GET" action="{{ route('search') }}" role="search" class="max-w-md pt-10">
-            <label for="home-search" class="label text-ink-muted">Search</label>
-            <input id="home-search" name="q" type="search" autocomplete="off" maxlength="100" placeholder="Project . . ."
-                   class="mt-1 block w-full border-0 border-b border-ink bg-transparent px-0 py-2.5 text-body placeholder:text-ink-muted/60">
-        </form>
-
         <div id="project-grid"
              class="grid grid-cols-1 gap-x-6 gap-y-12 py-10 md:grid-cols-12 md:gap-y-14 md:py-12"
              data-loaded-pages="{{ $loadedPages }}"

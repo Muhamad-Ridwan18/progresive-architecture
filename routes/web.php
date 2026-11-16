@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 // tetap bekerja. Pola URL kategori belum diputuskan (SRS Bagian 15 butir 1).
 Route::get('/', [ProjectController::class, 'index'])->name('home');
 Route::get('/projects/{slug}', [ProjectController::class, 'show'])->name('projects.show');
+Route::get('/projects/{slug}/panel', [ProjectController::class, 'panel'])->name('projects.panel');
 Route::get('/preview/projects/{project}', [ProjectController::class, 'preview'])->name('projects.preview');
 
 Route::get('/about', [AboutController::class, 'show'])->name('about');

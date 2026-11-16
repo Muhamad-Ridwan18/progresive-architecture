@@ -1,6 +1,7 @@
 import './menu';
 import './projects';
 import './lightbox';
+import './project-panel';
 import './interactions';
 import './careers';
 import './news';

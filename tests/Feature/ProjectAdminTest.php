@@ -196,6 +196,18 @@ class ProjectAdminTest extends TestCase
         $this->assertSame(ProjectStatus::Archived, $p->fresh()->status);
     }
 
+    public function test_list_and_create_pages_explain_the_draft_workflow(): void
+    {
+        Livewire::test(ListProjects::class)
+            ->assertSee('Perubahan disimpan sebagai draft sampai di-publish')
+            ->assertSee('New project');
+
+        Livewire::test(CreateProject::class)
+            ->assertSee('Isi nama dan kategori dulu')
+            ->assertSee('Setelah dibuat')
+            ->assertSee('belum tampil di website sampai Anda menekan Publish');
+    }
+
     // ---------------------------------------------------------------- penanda perubahan
 
     public function test_editor_summarises_what_has_changed_since_publish(): void

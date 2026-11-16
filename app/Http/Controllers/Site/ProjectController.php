@@ -93,6 +93,21 @@ class ProjectController extends Controller
         ]);
     }
 
+    /**
+     * Panel proyek yang dibuka di tempat pada daftar (tanpa pindah halaman): info, data teknis, dan foto yang
+     * digulir ke samping. Fragmen HTML tanpa layout; hanya versi published (draft dan Archived tidak ditemukan).
+     */
+    public function panel(string $slug)
+    {
+        $project = Project::query()
+            ->live()
+            ->with(['category', 'publishedCoverUsage.file', 'publishedGalleryUsages.file'])
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return response()->view('site.projects._panel', ['project' => PublicProject::published($project)]);
+    }
+
     /** Preview draft untuk administrator (SRS FR-CM-001). Tidak pernah dapat diakses publik atau diindeks. */
     public function preview(Request $request, Project $project): Response
     {
