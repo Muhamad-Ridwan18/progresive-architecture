@@ -36,7 +36,7 @@
             <div class="md:col-span-7">
                 <h1 data-enter style="--i: 1" class="text-display font-medium uppercase leading-[1.05] tracking-[-0.02em]">{{ $project->name }}</h1>
                 @if ($project->description)
-                    <div data-enter style="--i: 2"><x-prose :text="$project->description" class="mt-10 max-w-[62ch] text-[1.0625rem] leading-[1.7]" /></div>
+                    <div data-enter style="--i: 2"><x-prose :text="$project->description" class="mt-10 max-w-[62ch] text-lead" /></div>
                 @endif
             </div>
 
@@ -90,15 +90,35 @@
                             <div class="col-span-1 md:col-span-12">
                                 @if ($photo->note_by)
                                     <blockquote class="max-w-[48ch] md:ml-[25%]">
-                                        <p class="whitespace-pre-line text-[1.5rem] leading-[1.35] tracking-[-0.01em]">&ldquo;{{ $photo->note }}&rdquo;</p>
-                                        <footer class="mt-4 text-[0.75rem] uppercase tracking-[0.08em] text-ink-muted">{{ $photo->note_by }}</footer>
+                                        <p class="whitespace-pre-line text-h2 leading-[1.35] tracking-[-0.02em]">&ldquo;{{ $photo->note }}&rdquo;</p>
+                                        <footer class="mt-4 text-label uppercase tracking-[0.08em] text-ink-muted">{{ $photo->note_by }}</footer>
                                     </blockquote>
                                 @else
-                                    <x-prose :text="$photo->note" class="max-w-[62ch] text-[1.0625rem] leading-[1.7] md:ml-[25%]" />
+                                    <x-prose :text="$photo->note" class="max-w-[62ch] text-lead md:ml-[25%]" />
                                 @endif
                             </div>
                         @endif
                     @endforeach
+                </div>
+            </section>
+        @endif
+
+        {{-- Peta lokasi proyek (bila koordinat diisi). --}}
+        @if ($project->hasMap())
+            <section aria-label="Location" class="mt-16 grid gap-6 border-t border-line pt-6 md:mt-24 md:grid-cols-12 md:gap-x-6">
+                <h2 class="label text-ink-muted md:col-span-3">Location</h2>
+                <div class="md:col-span-9">
+                    @include('site.projects._map', ['project' => $project, 'class' => 'aspect-[4/3] w-full md:aspect-[16/7]'])
+                </div>
+            </section>
+        @endif
+
+        {{-- Kredit proyek: tim dan kolaborator. --}}
+        @if ($project->credits)
+            <section aria-label="Credits" class="mt-16 grid gap-6 border-t border-line pt-6 md:mt-24 md:grid-cols-12 md:gap-x-6">
+                <h2 class="label text-ink-muted md:col-span-3">Credits</h2>
+                <div class="md:col-span-9">
+                    @include('site.projects._credits', ['credits' => $project->credits, 'columns' => 'columns-2 md:columns-3'])
                 </div>
             </section>
         @endif

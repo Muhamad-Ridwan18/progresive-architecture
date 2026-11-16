@@ -99,7 +99,7 @@
                 @if ($site['logo'])
                     <img src="{{ $site['logo'] }}" alt="{{ $siteName }}" class="h-8 w-auto">
                 @else
-                    <span class="text-[0.75rem] font-medium uppercase leading-[1.3] tracking-[0.16em]">
+                    <span class="text-label font-medium uppercase leading-[1.3] tracking-[0.16em]">
                         {{ $brandLines[0] }}@if (isset($brandLines[1]))<br>{{ $brandLines[1] }}@endif
                     </span>
                 @endif
@@ -147,7 +147,7 @@
                 <nav aria-label="Main" class="mt-2 flex flex-col gap-1">
                     @foreach ($menu as [$label, $url, $current])
                         <a href="{{ $url }}" @if ($current) aria-current="page" @endif style="--i: {{ $loop->index }}"
-                           class="w-fit text-[1.75rem] font-medium uppercase leading-[1.2] tracking-[-0.01em] {{ $current ? 'underline decoration-2 underline-offset-8' : '' }}">
+                           class="w-fit text-h2 font-medium uppercase leading-[1.2] tracking-[-0.02em] {{ $current ? 'underline decoration-2 underline-offset-8' : '' }}">
                             {{ $label }}
                         </a>
                     @endforeach
@@ -201,7 +201,7 @@
     <footer class="mt-24 border-t border-line bg-bg-soft">
         <div class="container-page grid gap-10 py-14 md:grid-cols-12 md:gap-12">
             <div class="md:col-span-4">
-                <p class="text-[0.75rem] font-medium uppercase leading-[1.3] tracking-[0.16em]">
+                <p class="text-label font-medium uppercase leading-[1.3] tracking-[0.16em]">
                     {{ $brandLines[0] }}@if (isset($brandLines[1]))<br>{{ $brandLines[1] }}@endif
                 </p>
                 @if ($site['tagline'])

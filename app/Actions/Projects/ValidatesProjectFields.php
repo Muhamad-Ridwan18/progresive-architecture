@@ -41,6 +41,8 @@ trait ValidatesProjectFields
                 Rule::exists('categories', 'id')->where('type', Project::categoryType()->value),
             ],
             'location' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'year' => ['nullable', 'integer', 'min:1900', 'max:'.((int) date('Y') + 5)],
             'description' => ['nullable', 'string', 'max:20000'],
             'client' => ['nullable', 'string', 'max:255'],
@@ -49,6 +51,9 @@ trait ValidatesProjectFields
             'building_area' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
             'storeys' => ['nullable', 'integer', 'min:1', 'max:200'],
             'stage' => ['nullable', 'string', 'max:40'],
+            'credits' => ['nullable', 'array', 'max:20'],
+            'credits.*.title' => ['nullable', 'string', 'max:80'],
+            'credits.*.names' => ['nullable', 'string', 'max:3000'],
         ], [
             'slug.regex' => 'Slug hanya boleh huruf kecil, angka, dan tanda hubung.',
             'category_id.exists' => 'Pilih kategori proyek yang valid.',

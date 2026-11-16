@@ -458,6 +458,64 @@ class PublicSiteTest extends TestCase
             ->assertSee('Hilmi, Founder');
     }
 
+    public function test_project_credits_show_in_the_panel_and_on_the_detail_page(): void
+    {
+        $project = $this->published('Rumah Kredit', null, ['credits' => [
+            ['title' => 'Partner in Charge', 'names' => "Hilmi Haerul Umam\n  Nisa Yasyfa  \n\n"],
+            ['title' => 'Project Team', 'names' => "Aldy Rifky\nReyan Rizki"],
+            ['title' => 'Grup Kosong', 'names' => "  \n"],
+        ]]);
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
+        app(PublishProject::class)->handle($project->fresh());
+
+        $this->get(route('projects.panel', $project->slug))->assertOk()
+            ->assertSee('Partner in Charge')
+            ->assertSee('Hilmi Haerul Umam')
+            ->assertSee('Nisa Yasyfa')
+            ->assertSee('Project Team')
+            ->assertSee('Aldy Rifky')
+            ->assertDontSee('Grup Kosong');
+
+        $this->get(route('projects.show', $project->slug))->assertOk()
+            ->assertSee('Credits')
+            ->assertSee('Reyan Rizki');
+    }
+
+    public function test_project_without_credits_shows_no_credits_section(): void
+    {
+        $project = $this->published('Rumah Tanpa Kredit');
+
+        $this->get(route('projects.show', $project->slug))->assertOk()->assertDontSee('aria-label="Credits"', false);
+        $this->get(route('projects.panel', $project->slug))->assertOk()->assertDontSee('Project Team');
+    }
+
+    public function test_project_map_shows_only_when_both_coordinates_are_set(): void
+    {
+        $withCover = function (Project $project, int $seed): Project {
+            app(AttachMedia::class)->handle($this->media($seed), $project->fresh(), 'cover');
+
+            return app(PublishProject::class)->handle($project->fresh());
+        };
+
+        $with = $withCover($this->published('Rumah Peta', null, ['latitude' => -6.917464, 'longitude' => 107.619123]), 1);
+        $half = $withCover($this->published('Rumah Setengah', null, ['latitude' => -6.9]), 2);
+        $none = $withCover($this->published('Rumah Tanpa Peta'), 3);
+
+        $embed = 'openstreetmap.org/export/embed.html';
+
+        $this->get(route('projects.panel', $with->slug))->assertOk()
+            ->assertSee($embed, false)
+            ->assertSee('marker=-6.917464%2C107.619123', false)
+            ->assertSee('grayscale(1)', false)
+            ->assertSee('Open map');
+
+        $this->get(route('projects.show', $with->slug))->assertOk()->assertSee($embed, false)->assertSee('aria-label="Location"', false);
+
+        $this->get(route('projects.panel', $half->slug))->assertOk()->assertDontSee($embed, false);
+        $this->get(route('projects.panel', $none->slug))->assertOk()->assertDontSee($embed, false);
+        $this->get(route('projects.show', $none->slug))->assertOk()->assertDontSee('aria-label="Location"', false);
+    }
+
     public function test_panel_is_not_available_for_unpublished_projects(): void
     {
         $live = $this->published('Rumah Live');

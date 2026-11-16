@@ -35,7 +35,7 @@
     @if ($overview['body'])
         <section class="container-page {{ $gap }} grid gap-6 border-t border-line pt-6 md:grid-cols-12 md:gap-x-6">
             <h2 class="label text-ink-muted md:col-span-3">Studio</h2>
-            <x-prose :text="$overview['body']" class="max-w-[68ch] text-[1.1875rem] leading-[1.65] md:col-span-8" />
+            <x-prose :text="$overview['body']" class="max-w-[68ch] text-lead md:col-span-8" />
         </section>
     @endif
 
@@ -44,7 +44,7 @@
         <section class="container-page {{ $gap }} grid gap-6 border-t border-line pt-6 md:grid-cols-12 md:gap-x-6">
             <h2 class="label text-ink-muted md:col-span-3">History</h2>
             <div class="md:col-span-8">
-                <x-prose :text="$history['body']" class="max-w-[68ch] text-[1.1875rem] leading-[1.65]" />
+                <x-prose :text="$history['body']" class="max-w-[68ch] text-lead" />
 
                 @if ($history['milestones'])
                     <ol class="{{ $history['body'] ? 'mt-12' : '' }} divide-y divide-line border-y border-line">
@@ -71,13 +71,13 @@
             <h2 class="label text-ink-muted md:col-span-3">{{ $visionLabel }}</h2>
             <div class="md:col-span-8">
                 @if ($vision)
-                    <p class="max-w-[40ch] text-[1.5rem] font-medium leading-[1.3] tracking-[-0.01em] md:text-[2rem]">{{ $visionParts[0] }}</p>
+                    <p class="max-w-[40ch] text-h2 font-medium leading-[1.3] tracking-[-0.02em] md:text-h1">{{ $visionParts[0] }}</p>
                     @if (isset($visionParts[1]))
-                        <p class="mt-6 max-w-[68ch] text-[1.0625rem] leading-[1.7] text-ink-muted">{{ $visionParts[1] }}</p>
+                        <p class="mt-6 max-w-[68ch] text-lead text-ink-muted">{{ $visionParts[1] }}</p>
                     @endif
                 @endif
                 @if ($mission)
-                    <x-prose :text="$mission" class="{{ $vision ? 'mt-10' : '' }} max-w-[68ch] text-[1.0625rem] leading-[1.7]" />
+                    <x-prose :text="$mission" class="{{ $vision ? 'mt-10' : '' }} max-w-[68ch] text-lead" />
                 @endif
             </div>
 
@@ -96,7 +96,7 @@
                                     />
                                 </div>
                                 @if ($photo->caption)
-                                    <figcaption class="mt-3 flex items-start gap-3 text-small uppercase leading-snug tracking-[0.04em]">
+                                    <figcaption class="mt-3 flex items-start gap-3 text-small uppercase leading-snug tracking-[0.08em]">
                                         <span aria-hidden="true" class="mt-[0.45em] size-1.5 shrink-0 bg-ink"></span>
                                         <span>{{ $photo->caption }}</span>
                                     </figcaption>
@@ -114,7 +114,7 @@
         <section class="container-page {{ $gap }} border-t border-line" aria-label="Company values">
             @foreach ($content['values'] as $value)
                 <div class="border-b border-line py-7">
-                    <h2 class="text-[2rem] font-medium uppercase leading-[1.1] tracking-[-0.02em] md:text-[3.5rem]">{{ $value['title'] }}</h2>
+                    <h2 class="text-h1 font-medium uppercase leading-[1.1] tracking-[-0.02em] md:text-display">{{ $value['title'] }}</h2>
                     @if ($value['description'])
                         <p class="mt-3 max-w-[60ch] text-ink-muted">{{ $value['description'] }}</p>
                     @endif
@@ -129,8 +129,8 @@
             <dl class="grid gap-x-12 gap-y-12 {{ $statColumns }}">
                 @foreach ($content['statistics'] as $stat)
                     <div class="flex flex-col-reverse border-t-2 border-ink pt-4">
-                        <dt class="mt-3 text-small leading-[1.5] text-ink-muted">{{ $stat['label'] }}</dt>
-                        <dd class="text-[3rem] font-medium leading-none tracking-[-0.02em] md:text-[4rem]">{{ $stat['value'] }}</dd>
+                        <dt class="mt-3 text-small text-ink-muted">{{ $stat['label'] }}</dt>
+                        <dd class="text-display font-medium leading-none tracking-[-0.02em] md:text-display">{{ $stat['value'] }}</dd>
                     </div>
                 @endforeach
             </dl>

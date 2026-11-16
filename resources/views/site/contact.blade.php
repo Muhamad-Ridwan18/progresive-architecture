@@ -10,7 +10,7 @@
         <section class="md:col-span-5">
             <h1 class="text-display font-medium uppercase leading-[1.05] tracking-[-0.02em]">Contact</h1>
 
-            <dl class="mt-16 space-y-10 text-[1.0625rem] leading-[1.6]">
+            <dl class="mt-16 space-y-10 text-lead">
                 @if ($site['company_address'])
                     <div>
                         <dt class="label text-ink-muted">Location</dt>

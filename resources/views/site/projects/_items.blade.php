@@ -23,7 +23,7 @@
                 @endif
             </div>
             <h2 class="mt-3 text-small font-medium uppercase tracking-[0.08em]">{{ $p->name }}</h2>
-            <p class="mt-1 text-[0.75rem] uppercase tracking-[0.08em] text-ink-muted">
+            <p class="mt-1 text-label uppercase tracking-[0.08em] text-ink-muted">
                 @if ($p->year){{ $p->year }}@endif{{ $p->location ? ' – '.$p->location : '' }}
             </p>
         </a>

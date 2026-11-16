@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Projects\Schemas;
 use App\Livewire\ProjectMediaManager;
 use App\Models\Category;
 use App\Models\Project;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -81,6 +82,39 @@ class ProjectForm
                 ->info()
                 ->visibleOn('create'),
 
+            // Peta di akhir deretan foto proyek; tampil bila kedua koordinat terisi.
+            Section::make('Location map')
+                ->description('Opsional. Isi koordinat agar peta tampil di akhir deretan foto proyek. Di Google Maps, klik kanan titik lokasi lalu klik angka koordinat untuk menyalinnya.')
+                ->collapsible()
+                ->columns(2)
+                ->visibleOn('edit')
+                ->schema([
+                    self::autosave(TextInput::make('latitude')->label('Latitude')->numeric()->minValue(-90)->maxValue(90)->step(0.000001)->placeholder('-6.917464')),
+                    self::autosave(TextInput::make('longitude')->label('Longitude')->numeric()->minValue(-180)->maxValue(180)->step(0.000001)->placeholder('107.619123')),
+                ]),
+
+            // Kredit seperti slide terakhir di halaman proyek BIG: kelompok berjudul berisi nama satu per baris.
+            Section::make('Credits')
+                ->description('Tim dan kolaborator proyek. Tampil sebagai slide terakhir di deretan foto proyek.')
+                ->collapsible()
+                ->visibleOn('edit')
+                ->schema([
+                    Repeater::make('credits')
+                        ->label('')
+                        ->schema([
+                            TextInput::make('title')->label('Group title')->placeholder('Project Team, Collaborators, ...')->maxLength(80),
+                            Textarea::make('names')->label('Names')->rows(6)->helperText('Satu nama per baris.')->maxLength(3000),
+                        ])
+                        ->itemLabel(fn (array $state): ?string => filled($state['title'] ?? null) ? $state['title'] : null)
+                        ->addActionLabel('Add group')
+                        ->defaultItems(0)
+                        ->reorderable()
+                        ->collapsible()
+                        ->live(onBlur: false, debounce: 1500)
+                        ->hint(fn (?Project $record): ?string => $record !== null && in_array('credits', $record->changedFieldKeys(), true) ? 'Changed' : null)
+                        ->hintColor('warning'),
+                ]),
+
             Section::make('Cover image')
                 ->description('Gambar utama proyek. Klik gambar untuk menentukan titik fokus pemotongan.')
                 ->visibleOn('edit')
@@ -125,9 +159,9 @@ class ProjectForm
     private static function changedLabels(Project $project): array
     {
         $labels = [
-            'name' => 'Name', 'slug' => 'Slug', 'category_id' => 'Category', 'location' => 'Location', 'year' => 'Year',
+            'name' => 'Name', 'slug' => 'Slug', 'category_id' => 'Category', 'location' => 'Location', 'latitude' => 'Map latitude', 'longitude' => 'Map longitude', 'year' => 'Year',
             'description' => 'Description', 'client' => 'Client', 'typology' => 'Typology', 'land_area' => 'Land area',
-            'building_area' => 'Building area', 'storeys' => 'Storeys', 'stage' => 'Status',
+            'building_area' => 'Building area', 'storeys' => 'Storeys', 'stage' => 'Status', 'credits' => 'Credits',
         ];
 
         $changed = array_map(fn (string $key): string => $labels[$key], $project->changedFieldKeys());

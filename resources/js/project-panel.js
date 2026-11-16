@@ -73,6 +73,18 @@ if (grid) {
         syncSnapPadding();
         new ResizeObserver(syncSnapPadding).observe(scroller);
 
+        // Foto memudar masuk saat siap (bukan muncul mendadak), supaya menggulir terasa halus.
+        scroller.querySelectorAll('img').forEach((img) => {
+            const ready = () => img.classList.add('is-loaded');
+
+            if (img.complete && img.naturalWidth > 0) {
+                ready();
+            } else {
+                img.addEventListener('load', ready, { once: true });
+                img.addEventListener('error', ready, { once: true });
+            }
+        });
+
         const count = el.querySelector('[data-panel-count]');
         const slides = [...scroller.querySelectorAll('[data-panel-slide]')];
         const step = () => Math.max(scroller.clientWidth * 0.8, 240);
@@ -185,12 +197,32 @@ if (grid) {
             setHash(link.dataset.slug);
             wire(el);
 
+            // Foto pertama didekode lebih dulu (maks. 700 ms) supaya animasi tidak tersendat oleh pekerjaan dekode.
+            const first = el.querySelector('img');
+
+            await Promise.race([
+                first && first.decode ? first.decode().catch(() => {}) : Promise.resolve(),
+                new Promise((resolve) => setTimeout(resolve, 700)),
+            ]);
+
             // Dua frame: tinggi 0 harus sempat dihitung sebelum kelas buka dipasang, agar animasinya berjalan.
-            requestAnimationFrame(() => requestAnimationFrame(() => {
+            // Pewaktu menjadi cadangan bila frame tidak berjalan (mis. tab di latar belakang).
+            let revealed = false;
+
+            const reveal = () => {
+                if (revealed) {
+                    return;
+                }
+
+                revealed = true;
                 el.classList.add('is-open');
 
-                el.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
-            }));
+                // Gulir ke panel dimulai sedikit setelah tinggi mulai membesar, tidak berebut dengan animasinya.
+                setTimeout(() => el.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' }), reducedMotion.matches ? 0 : 90);
+            };
+
+            requestAnimationFrame(() => requestAnimationFrame(reveal));
+            setTimeout(reveal, 300);
         } catch (error) {
             // Gagal memuat panel: buka halaman detail seperti tautan biasa (penyebab dicatat di konsol untuk diagnosis).
             console.error('Panel proyek gagal dimuat, membuka halaman detail.', error);

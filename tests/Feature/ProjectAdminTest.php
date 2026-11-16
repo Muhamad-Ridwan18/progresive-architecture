@@ -20,6 +20,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -223,6 +224,71 @@ class ProjectAdminTest extends TestCase
         $this->assertSame('Narasi setelah foto.', $usage->fresh()->note);
         $this->assertSame('Hilmi, Founder', $usage->fresh()->note_by);
         $this->assertSame(ProjectStatus::UnpublishedChanges, $p->fresh()->status, 'Teks baru adalah perubahan yang belum dipublikasikan.');
+    }
+
+    public function test_credits_are_normalised_validated_and_follow_the_draft_flow(): void
+    {
+        $p = app(PublishProject::class)->handle($this->project());
+
+        $this->assertNull($p->fresh()->credits);
+
+        $p = app(SaveProjectDraft::class)->handle($p, ['credits' => [
+            ['title' => ' Project Team ', 'names' => " Aldy \n\n Reyan "],
+            ['title' => 'Kosong', 'names' => ''],
+        ]], $p->draft_version);
+
+        $this->assertSame([['title' => 'Project Team', 'names' => "Aldy\nReyan"]], $p->draftFields()['credits']);
+        $this->assertSame(ProjectStatus::UnpublishedChanges, $p->status);
+        $this->assertSame(['credits'], $p->changedFieldKeys());
+        $this->assertNull($p->fresh()->credits, 'Versi published belum berubah sebelum Publish.');
+
+        $p = app(PublishProject::class)->handle($p->fresh());
+        $this->assertSame([['title' => 'Project Team', 'names' => "Aldy\nReyan"]], $p->fresh()->credits);
+        $this->assertSame(ProjectStatus::Published, $p->fresh()->status);
+
+        // Baris yang hanya berisi kosong dianggap sama dengan "tidak ada kredit".
+        $p = app(SaveProjectDraft::class)->handle($p->fresh(), ['credits' => [['title' => 'X', 'names' => ' ']]], $p->draft_version);
+        $this->assertNull($p->draftFields()['credits']);
+
+        $this->expectException(ValidationException::class);
+        app(SaveProjectDraft::class)->handle($p->fresh(), ['credits' => [['title' => str_repeat('a', 81), 'names' => 'Nama']]], $p->fresh()->draft_version);
+    }
+
+    public function test_credits_can_be_edited_in_the_project_editor(): void
+    {
+        $p = $this->project();
+
+        Livewire::test(EditProject::class, ['record' => $p->id])
+            ->assertSee('Credits')
+            ->fillForm(['credits' => [['title' => 'Collaborators', 'names' => "A+Architecture\nALTO"]]])
+            ->call('autosave')
+            ->assertSet('saveState', 'saved');
+
+        $this->assertSame([['title' => 'Collaborators', 'names' => "A+Architecture\nALTO"]], $p->fresh()->draftFields()['credits']);
+    }
+
+    public function test_map_coordinates_are_validated_and_edited_in_the_editor(): void
+    {
+        $p = $this->project();
+
+        Livewire::test(EditProject::class, ['record' => $p->id])
+            ->assertSee('Location map')
+            ->fillForm(['latitude' => -6.917464, 'longitude' => 107.619123])
+            ->call('autosave')
+            ->assertSet('saveState', 'saved');
+
+        $fields = $p->fresh()->draftFields();
+        $this->assertSame(-6.917464, $fields['latitude']);
+        $this->assertSame(107.619123, $fields['longitude']);
+
+        foreach ([['latitude' => 95], ['longitude' => -190], ['latitude' => 'abc']] as $invalid) {
+            try {
+                app(SaveProjectDraft::class)->handle($p->fresh(), $invalid, $p->fresh()->draft_version);
+                $this->fail('Koordinat tidak valid seharusnya ditolak: '.json_encode($invalid));
+            } catch (ValidationException $e) {
+                $this->assertNotEmpty($e->errors());
+            }
+        }
     }
 
     // ---------------------------------------------------------------- penanda perubahan

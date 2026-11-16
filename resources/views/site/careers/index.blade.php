@@ -16,7 +16,7 @@
         <h1 class="max-w-[14ch] text-display font-medium uppercase leading-[1.05] tracking-[-0.02em]">Come and join us</h1>
 
         @if ($intro)
-            <x-prose :text="$intro" class="mt-10 max-w-[58ch] text-[1.0625rem] leading-[1.7]" />
+            <x-prose :text="$intro" class="mt-10 max-w-[58ch] text-lead" />
         @endif
 
         {{-- Recruitments (mockup): lokasi di kiri, daftar posisi dengan tautan Apply di kanan. Formulir lamaran ada
@@ -25,7 +25,7 @@
             <div class="md:col-span-3">
                 <h2 id="recruitments" class="label text-ink-muted">Recruitments</h2>
                 @if ($site['company_address'])
-                    <p class="mt-4 whitespace-pre-line text-small leading-[1.6] text-ink-muted">Base on {{ $site['company_address'] }}</p>
+                    <p class="mt-4 whitespace-pre-line text-small text-ink-muted">Base on {{ $site['company_address'] }}</p>
                 @endif
             </div>
 
@@ -44,7 +44,7 @@
                                 <a href="{{ route('careers.show', $vacancy) }}"
                                    class="grid min-h-11 grid-cols-[1fr_auto] items-center gap-4 py-6 transition-colors duration-150 hover:bg-bg-soft md:px-2">
                                     <span>
-                                        <span class="block text-[1.25rem] font-medium uppercase tracking-[0.02em]">{{ $vacancy->title }}</span>
+                                        <span class="block text-h2 font-medium uppercase tracking-[0.08em]">{{ $vacancy->title }}</span>
                                         <span class="mt-1 block text-small text-ink-muted">
                                             {{ collect([$vacancy->location, $vacancy->employment_type, $vacancy->deadline ? 'Deadline '.$vacancy->deadline->translatedFormat('d M Y') : null])->filter()->implode(' · ') }}
                                         </span>

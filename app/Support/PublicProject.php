@@ -22,13 +22,45 @@ final class PublicProject
         public readonly string $slug,
         public readonly ?Category $category,
         public readonly ?string $location,
+        public readonly ?float $latitude,
+        public readonly ?float $longitude,
         public readonly ?int $year,
         public readonly ?string $description,
         public readonly array $facts,
+        public readonly array $credits,
         public readonly ?MediaUsage $cover,
         public readonly Collection $gallery,
         public readonly bool $isDraft,
     ) {}
+
+    /** Peta hanya tampil bila kedua koordinat terisi. */
+    public function hasMap(): bool
+    {
+        return $this->latitude !== null && $this->longitude !== null;
+    }
+
+    /** Alamat peta OpenStreetMap yang disematkan (dapat digeser dan diperbesar), berpenanda di titik proyek. */
+    public function mapEmbedUrl(): ?string
+    {
+        if (! $this->hasMap()) {
+            return null;
+        }
+
+        $dLon = 0.03;
+        $dLat = 0.02;
+
+        return 'https://www.openstreetmap.org/export/embed.html?'.http_build_query([
+            'bbox' => implode(',', [round($this->longitude - $dLon, 6), round($this->latitude - $dLat, 6), round($this->longitude + $dLon, 6), round($this->latitude + $dLat, 6)]),
+            'layer' => 'mapnik',
+            'marker' => $this->latitude.','.$this->longitude,
+        ]);
+    }
+
+    /** Tautan untuk membuka titik yang sama di aplikasi peta penuh. */
+    public function mapLinkUrl(): ?string
+    {
+        return $this->hasMap() ? 'https://www.openstreetmap.org/?mlat='.$this->latitude.'&mlon='.$this->longitude.'#map=14/'.$this->latitude.'/'.$this->longitude : null;
+    }
 
     /** Versi published. Relasi `category`, `publishedCoverUsage.file`, `publishedGalleryUsages.file` sebaiknya sudah dimuat. */
     public static function published(Project $project): self
@@ -39,9 +71,12 @@ final class PublicProject
             slug: $project->slug,
             category: $project->category,
             location: $project->location,
+            latitude: $project->latitude,
+            longitude: $project->longitude,
             year: $project->year,
             description: $project->description,
             facts: self::facts($project->only(Project::FIELDS)),
+            credits: self::creditGroups($project->credits),
             cover: self::ready($project->publishedCoverUsage),
             gallery: $project->publishedGalleryUsages->filter(fn (MediaUsage $u) => $u->file->isReady())->values(),
             isDraft: false,
@@ -59,12 +94,28 @@ final class PublicProject
             slug: $d['slug'] ?? $project->slug,
             category: Category::query()->find($d['category_id'] ?? null),
             location: $d['location'],
+            latitude: $d['latitude'],
+            longitude: $d['longitude'],
             year: $d['year'],
             description: $d['description'],
             facts: self::facts($d),
+            credits: self::creditGroups($d['credits'] ?? null),
             cover: self::ready($project->cover(draft: true)),
             gallery: $project->usages(draft: true, role: Project::ROLE_GALLERY)->filter(fn (MediaUsage $u) => $u->file->isReady())->values(),
             isDraft: true,
+        );
+    }
+
+    /**
+     * Kelompok kredit untuk tampilan: judul dan daftar nama (satu per baris).
+     *
+     * @return list<array{title: string, names: list<string>}>
+     */
+    private static function creditGroups(mixed $credits): array
+    {
+        return array_map(
+            fn (array $group): array => ['title' => $group['title'], 'names' => preg_split('/\R/', $group['names']) ?: []],
+            Project::normalizeCredits($credits) ?? [],
         );
     }
 

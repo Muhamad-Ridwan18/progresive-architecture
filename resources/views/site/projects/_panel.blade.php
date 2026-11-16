@@ -26,19 +26,14 @@
                 <button type="button" data-panel-close class="-mr-3 flex h-11 w-11 items-center justify-center text-2xl" aria-label="Close project">&times;</button>
             </div>
 
-            {{-- Layar kecil: info sebagai blok biasa di atas deretan foto. --}}
-            <div class="mb-8 md:hidden">
-                @include('site.projects._panel-info', ['project' => $project, 'facts' => $facts, 'mobile' => true])
-            </div>
-
             @if ($slides->isNotEmpty())
                 {{-- Seluruh deretan digulir ke samping (gulir, seret, panah, atau keyboard) dan meluber sampai tepi layar. --}}
                 <div data-panel-scroller tabindex="0" role="group" aria-roledescription="carousel" aria-label="Foto {{ $project->name }}"
-                     class="project-panel-bleed no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto">
+                     class="project-panel-bleed no-scrollbar flex snap-x snap-proximity gap-3 overflow-x-auto">
 
-                    {{-- Desktop: info adalah slide pertama, jadi ikut bergeser keluar saat foto digulir. --}}
-                    <div class="hidden w-[17rem] shrink-0 snap-start overflow-y-auto pr-6 text-right md:block">
-                        @include('site.projects._panel-info', ['project' => $project, 'facts' => $facts, 'mobile' => false])
+                    {{-- Info adalah slide pertama (di ponsel juga), jadi ikut bergeser keluar saat deretan digulir. --}}
+                    <div class="w-[78vw] shrink-0 snap-start overflow-y-auto pr-6 text-left md:w-[17rem] md:text-right">
+                        @include('site.projects._panel-info', ['project' => $project, 'facts' => $facts])
                     </div>
 
                     @foreach ($slides as $i => $slide)
@@ -56,18 +51,18 @@
                                      @if ($i > 1) loading="lazy" @endif decoding="async" draggable="false"
                                      class="h-full w-full select-none object-cover">
                             </div>
-                            <figcaption class="h-12 overflow-hidden pt-2 text-[0.75rem] leading-snug text-ink-muted" style="max-width: 100%">{{ $slide->caption }}</figcaption>
+                            <figcaption class="h-12 overflow-hidden pt-2 text-label leading-snug text-ink-muted" style="max-width: 100%">{{ $slide->caption }}</figcaption>
                         </figure>
 
                         {{-- Teks yang ditambahkan admin setelah foto ini. Berisi pengucap = kutipan (huruf besar); selain itu narasi biasa. --}}
                         @if ($slide->note)
-                            <div class="hidden shrink-0 snap-start items-center overflow-y-auto pr-6 md:flex {{ $slide->note_by ? 'w-[34rem]' : 'w-[20rem]' }}">
+                            <div class="flex shrink-0 snap-start items-center overflow-y-auto pr-6 {{ $slide->note_by ? 'w-[85vw] md:w-[34rem]' : 'w-[78vw] md:w-[20rem]' }}">
                                 <div>
                                     @if ($slide->note_by)
-                                        <p class="whitespace-pre-line text-[1.375rem] leading-[1.35] tracking-[-0.01em]">&ldquo;{{ $slide->note }}&rdquo;</p>
-                                        <p class="mt-6 text-[0.6875rem] uppercase tracking-[0.08em] text-ink-muted">{{ $slide->note_by }}</p>
+                                        <p class="whitespace-pre-line text-h2 leading-[1.35] tracking-[-0.02em]">&ldquo;{{ $slide->note }}&rdquo;</p>
+                                        <p class="mt-6 text-label uppercase tracking-[0.08em] text-ink-muted">{{ $slide->note_by }}</p>
                                     @else
-                                        <x-prose :text="$slide->note" class="text-[0.8125rem] leading-[1.6]" />
+                                        <x-prose :text="$slide->note" class="text-caption" />
                                     @endif
                                 </div>
                             </div>
@@ -75,28 +70,26 @@
 
                         {{-- Narasi proyek duduk tepat di kanan foto pertama; foto berikutnya mengintip di tepinya. --}}
                         @if ($i === 0 && $project->description)
-                            <div class="hidden w-[20rem] shrink-0 snap-start overflow-y-auto pl-2 pr-6 md:block">
-                                <x-prose :text="$project->description" class="text-[0.8125rem] leading-[1.6]" />
+                            <div class="w-[78vw] shrink-0 snap-start overflow-y-auto pl-2 pr-6 md:w-[20rem]">
+                                <x-prose :text="$project->description" class="text-caption" />
                             </div>
                         @endif
                     @endforeach
-                </div>
 
-                {{-- Layar kecil: teks tambahan dikumpulkan di bawah deretan foto. --}}
-                @if ($slides->contains(fn ($slide) => filled($slide->note)))
-                    <div class="mt-6 space-y-6 md:hidden">
-                        @foreach ($slides->filter(fn ($slide) => filled($slide->note)) as $slide)
-                            @if ($slide->note_by)
-                                <blockquote>
-                                    <p class="whitespace-pre-line text-[1.125rem] leading-[1.4]">&ldquo;{{ $slide->note }}&rdquo;</p>
-                                    <footer class="mt-3 text-[0.6875rem] uppercase tracking-[0.08em] text-ink-muted">{{ $slide->note_by }}</footer>
-                                </blockquote>
-                            @else
-                                <x-prose :text="$slide->note" class="text-small leading-[1.7]" />
-                            @endif
-                        @endforeach
-                    </div>
-                @endif
+                    {{-- Peta lokasi (bila koordinat diisi), lalu kredit. --}}
+                    @if ($project->hasMap())
+                        <div class="flex w-[88vw] shrink-0 snap-start flex-col pr-6 md:w-[40rem]">
+                            @include('site.projects._map', ['project' => $project, 'class' => 'min-h-0 flex-1'])
+                        </div>
+                    @endif
+
+                    {{-- Slide terakhir: kredit proyek (tim dan kolaborator), seperti halaman proyek BIG. --}}
+                    @if ($project->credits)
+                        <div class="w-[88vw] shrink-0 snap-start overflow-y-auto pr-6 md:w-[56rem]">
+                            @include('site.projects._credits', ['credits' => $project->credits, 'columns' => 'columns-2 md:columns-3'])
+                        </div>
+                    @endif
+                </div>
 
                 <div class="mt-4 flex items-center justify-between" data-panel-controls>
                     <span class="label text-ink-muted"><span data-panel-count>01</span> / {{ str_pad((string) $slides->count(), 2, '0', STR_PAD_LEFT) }}</span>

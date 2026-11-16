@@ -30,7 +30,7 @@
                                     <p class="label mt-4 text-ink-muted">{{ $member['position'] }}</p>
                                 @endif
                                 @if ($member['bio'])
-                                    <x-prose :text="$member['bio']" class="mt-10 max-w-[62ch] text-[1.0625rem] leading-[1.7]" />
+                                    <x-prose :text="$member['bio']" class="mt-10 max-w-[62ch] text-lead" />
                                 @endif
                             </div>
                         </div>
@@ -55,7 +55,7 @@
                             </div>
                             <p class="member-name mt-3 text-small font-medium uppercase tracking-[0.08em]">{{ $member['name'] }}</p>
                             @if ($member['position'])
-                                <p class="mt-1 text-[0.75rem] uppercase tracking-[0.08em] text-ink-muted">{{ $member['position'] }}</p>
+                                <p class="mt-1 text-label uppercase tracking-[0.08em] text-ink-muted">{{ $member['position'] }}</p>
                             @endif
                         </a>
                     </li>

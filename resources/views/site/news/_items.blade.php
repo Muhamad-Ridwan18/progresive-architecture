@@ -6,7 +6,7 @@
     @if ($layout === 'rows')
         <a href="{{ $a->url() }}" class="group grid items-baseline gap-2 border-b border-line py-7 first:border-t md:grid-cols-12 md:gap-x-6">
             <span class="text-small text-ink-muted md:col-span-2">{{ $a->publishedAt?->format('Y') }}</span>
-            <span class="text-[1.5rem] font-medium leading-[1.3] group-hover:underline md:col-span-7">{{ $a->title }}</span>
+            <span class="text-h2 font-medium leading-[1.3] group-hover:underline md:col-span-7">{{ $a->title }}</span>
             <span class="text-small text-ink-muted md:col-span-3">{{ $a->authorName ?? $a->category?->name }}</span>
         </a>
     @elseif ($layout === 'blocks')
@@ -18,9 +18,9 @@
                 @endif
             </div>
             <div class="md:col-span-6 md:col-start-7">
-                <p class="text-[1.5rem] font-medium leading-[1.2] tracking-[-0.01em] md:text-[2rem]">{{ $a->title }}</p>
+                <p class="text-h2 font-medium leading-[1.2] tracking-[-0.02em] md:text-h1">{{ $a->title }}</p>
                 @if ($a->excerpt)
-                    <p class="mt-5 max-w-[48ch] text-[1.0625rem] leading-[1.7] text-ink-muted">{{ $a->excerpt }}</p>
+                    <p class="mt-5 max-w-[48ch] text-lead text-ink-muted">{{ $a->excerpt }}</p>
                 @endif
                 <span class="label mt-8 inline-block border-b border-ink pb-0.5">Read</span>
             </div>
@@ -34,7 +34,7 @@
                             class="transition-transform duration-300 ease-out group-hover:scale-[1.02] motion-reduce:transition-none" />
                     @endif
                 </div>
-                <p class="mt-4 text-[0.75rem] uppercase tracking-[0.08em] text-ink-muted">
+                <p class="mt-4 text-label uppercase tracking-[0.08em] text-ink-muted">
                     {{ $a->category?->name }}@if ($a->publishedAt) · {{ $a->publishedAt->translatedFormat('d M Y') }}@endif
                 </p>
                 <h2 class="mt-1.5 text-h3 font-medium leading-[1.3]">{{ $a->title }}</h2>

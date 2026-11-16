@@ -21,8 +21,8 @@ class Project extends Model
 
     /** Field konten yang bisa diedit. Dipakai bersama oleh draft dan versi published. */
     public const FIELDS = [
-        'name', 'slug', 'category_id', 'location', 'year', 'description',
-        'client', 'typology', 'land_area', 'building_area', 'storeys', 'stage',
+        'name', 'slug', 'category_id', 'location', 'latitude', 'longitude', 'year', 'description',
+        'client', 'typology', 'land_area', 'building_area', 'storeys', 'stage', 'credits',
     ];
 
     protected $guarded = [];
@@ -44,6 +44,9 @@ class Project extends Model
             'land_area' => 'float',
             'building_area' => 'float',
             'storeys' => 'integer',
+            'credits' => 'array',
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 
@@ -156,6 +159,40 @@ class Project extends Model
 
     // ------------------------------------------------------------------ internal
 
+    /**
+     * Kredit dirapikan: judul dan nama dipangkas, baris kosong dibuang, kelompok tanpa nama dihapus. Kosong = null,
+     * agar draft yang hanya berisi baris kosong tidak dianggap berbeda dari versi published.
+     *
+     * @return list<array{title: string, names: string}>|null
+     */
+    public static function normalizeCredits(mixed $value): ?array
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $groups = [];
+
+        foreach ($value as $group) {
+            if (! is_array($group)) {
+                continue;
+            }
+
+            $names = collect(preg_split('/\R/', (string) ($group['names'] ?? '')) ?: [])
+                ->map(fn (string $line): string => trim($line))
+                ->filter()
+                ->implode("\n");
+
+            if ($names === '') {
+                continue;
+            }
+
+            $groups[] = ['title' => trim((string) ($group['title'] ?? '')), 'names' => $names];
+        }
+
+        return $groups === [] ? null : $groups;
+    }
+
     /** @param array<string, mixed> $fields */
     private function normalize(array $fields): array
     {
@@ -175,6 +212,14 @@ class Project extends Model
 
             if (in_array($key, ['land_area', 'building_area'], true) && $value !== null) {
                 $value = round((float) $value, 1);
+            }
+
+            if (in_array($key, ['latitude', 'longitude'], true) && $value !== null) {
+                $value = round((float) $value, 6);
+            }
+
+            if ($key === 'credits') {
+                $value = self::normalizeCredits($value);
             }
 
             $out[$key] = $value;
