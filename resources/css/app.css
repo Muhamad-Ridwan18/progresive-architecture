@@ -329,6 +329,19 @@ body:has(#project-grid) main {
     }
 }
 
+/* Deretan foto meluber sampai tepi layar (seperti BIG), tetap sejajar dengan isi halaman saat belum digulir. */
+.project-panel-bleed {
+    margin-inline: calc(50% - 50vw);
+    padding-inline: calc(50vw - 50%);
+    scroll-padding-inline: calc(50vw - 50%);
+}
+
+/* Luberan sampai tepi layar tidak boleh memunculkan scrollbar horizontal pada halaman. */
+html,
+body {
+    overflow-x: clip;
+}
+
 .no-scrollbar {
     scrollbar-width: none;
 }
