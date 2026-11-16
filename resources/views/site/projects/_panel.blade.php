@@ -34,7 +34,7 @@
             @if ($slides->isNotEmpty())
                 {{-- Seluruh deretan digulir ke samping (gulir, seret, panah, atau keyboard) dan meluber sampai tepi layar. --}}
                 <div data-panel-scroller tabindex="0" role="group" aria-roledescription="carousel" aria-label="Foto {{ $project->name }}"
-                     class="project-panel-bleed no-scrollbar flex h-[52vh] snap-x snap-mandatory gap-3 overflow-x-auto md:h-[64vh]">
+                     class="project-panel-bleed no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto">
 
                     {{-- Desktop: info adalah slide pertama, jadi ikut bergeser keluar saat foto digulir. --}}
                     <div class="hidden w-[17rem] shrink-0 snap-start overflow-y-auto pr-6 text-right md:block">
@@ -42,16 +42,19 @@
                     </div>
 
                     @foreach ($slides as $i => $slide)
-                        @php $file = $slide->file; @endphp
+                        @php
+                            $file = $slide->file;
+                            $ratio = round($file->width / max(1, $file->height), 5);
+                        @endphp
 
                         {{-- Setiap foto punya keterangan sendiri (caption dari admin). Ruangnya selalu disediakan agar tinggi semua foto sama. --}}
-                        <figure data-panel-slide class="flex h-full shrink-0 snap-start flex-col">
+                        <figure data-panel-slide class="panel-figure flex h-full shrink-0 snap-start flex-col" style="--r: {{ $ratio }}">
                             <div class="min-h-0 flex-1 bg-bg-soft">
                                 <img src="{{ $file->url(1280) }}" srcset="{{ $file->srcset() }}" sizes="80vw"
                                      width="{{ $file->width }}" height="{{ $file->height }}"
                                      alt="{{ $slide->alt_text ?: $project->name }}"
                                      @if ($i > 1) loading="lazy" @endif decoding="async" draggable="false"
-                                     class="h-full w-auto max-w-none select-none">
+                                     class="h-full w-full select-none object-cover">
                             </div>
                             <figcaption class="h-12 overflow-hidden pt-2 text-[0.75rem] leading-snug text-ink-muted" style="max-width: 100%">{{ $slide->caption }}</figcaption>
                         </figure>

@@ -339,6 +339,22 @@ body:has(#project-grid) main {
     padding-inline: calc(50vw - 50%);
 }
 
+.project-panel-bleed {
+    --strip-h: 52vh;
+    height: var(--strip-h);
+}
+
+@media (min-width: 768px) {
+    .project-panel-bleed {
+        --strip-h: 64vh;
+    }
+}
+
+/* Lebar foto dihitung dari tinggi deretan dan rasio aslinya, supaya kotaknya persis seukuran gambar (tanpa sisa kosong). */
+.panel-figure {
+    width: calc((var(--strip-h) - 3rem) * var(--r));
+}
+
 .snap-align-none {
     scroll-snap-align: none;
 }
