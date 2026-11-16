@@ -296,11 +296,15 @@ body:has(#project-grid) main {
 .project-panel {
     display: grid;
     grid-template-rows: 0fr;
+    min-width: 0;
 }
 
 .project-panel > div {
     min-height: 0;
-    overflow: hidden;
+    min-width: 0;
+    /* Hanya dipotong secara vertikal (saat tinggi beranimasi); horizontal dibiarkan agar deretan foto meluber sampai tepi layar. */
+    overflow-x: visible;
+    overflow-y: clip;
 }
 
 .project-panel.is-open {
@@ -333,7 +337,10 @@ body:has(#project-grid) main {
 .project-panel-bleed {
     margin-inline: calc(50% - 50vw);
     padding-inline: calc(50vw - 50%);
-    scroll-padding-inline: calc(50vw - 50%);
+}
+
+.snap-align-none {
+    scroll-snap-align: none;
 }
 
 /* Luberan sampai tepi layar tidak boleh memunculkan scrollbar horizontal pada halaman. */

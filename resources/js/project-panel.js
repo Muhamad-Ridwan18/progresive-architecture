@@ -65,6 +65,14 @@ if (grid) {
             return;
         }
 
+        // Jarak snap mengikuti padding deretan (margin halaman), supaya info dan foto sejajar dengan isi halaman saat awal.
+        const syncSnapPadding = () => {
+            scroller.style.scrollPaddingInline = getComputedStyle(scroller).paddingLeft;
+        };
+
+        syncSnapPadding();
+        new ResizeObserver(syncSnapPadding).observe(scroller);
+
         const count = el.querySelector('[data-panel-count]');
         const slides = [...scroller.querySelectorAll('[data-panel-slide]')];
         const step = () => Math.max(scroller.clientWidth * 0.8, 240);
@@ -180,6 +188,7 @@ if (grid) {
             // Dua frame: tinggi 0 harus sempat dihitung sebelum kelas buka dipasang, agar animasinya berjalan.
             requestAnimationFrame(() => requestAnimationFrame(() => {
                 el.classList.add('is-open');
+
                 el.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
             }));
         } catch (error) {
