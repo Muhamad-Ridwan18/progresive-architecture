@@ -66,7 +66,7 @@ if (grid) {
         }
 
         const count = el.querySelector('[data-panel-count]');
-        const slides = [...scroller.children];
+        const slides = [...scroller.querySelectorAll('[data-panel-slide]')];
         const step = () => Math.max(scroller.clientWidth * 0.8, 240);
 
         el.querySelector('[data-panel-prev]')?.addEventListener('click', () => scroller.scrollBy({ left: -step(), behavior: reducedMotion.matches ? 'auto' : 'smooth' }));
@@ -183,7 +183,8 @@ if (grid) {
                 el.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
             }));
         } catch (error) {
-            // Gagal memuat panel: buka halaman detail seperti tautan biasa.
+            // Gagal memuat panel: buka halaman detail seperti tautan biasa (penyebab dicatat di konsol untuk diagnosis).
+            console.error('Panel proyek gagal dimuat, membuka halaman detail.', error);
             window.location.href = link.href;
         } finally {
             busy = false;
