@@ -7,6 +7,7 @@ use App\Actions\About\PublishAbout;
 use App\Actions\About\SaveAboutDraft;
 use App\Actions\Projects\StaleDraftException;
 use App\Enums\PageStatus;
+use App\Filament\Concerns\ReportsInvalidFields;
 use App\Livewire\ProjectMediaManager;
 use App\Models\AboutPage;
 use App\Support\AboutContent;
@@ -43,6 +44,8 @@ use UnitEnum;
  */
 class ManageAboutUs extends Page
 {
+    use ReportsInvalidFields;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInformationCircle;
 
     protected static string|UnitEnum|null $navigationGroup = 'CONTENT MANAGEMENT';
@@ -283,7 +286,8 @@ class ManageAboutUs extends Page
         } catch (ValidationException $e) {
             // Pesan ditampilkan di subjudul (bukan notifikasi) agar tidak membanjiri saat mengetik.
             $this->saveState = 'invalid';
-            $this->saveMessage = collect($e->errors())->flatten()->first();
+            $this->rememberInvalidFields($e->errors());
+            $this->saveMessage = implode(' · ', $this->describeErrors($e->errors()));
 
             return false;
         } catch (Throwable $e) {
@@ -296,6 +300,7 @@ class ManageAboutUs extends Page
         $this->draftVersion = $page->draft_version;
         $this->saveState = 'saved';
         $this->savedAt = now()->format('H:i:s');
+        $this->clearInvalidFields();
 
         return true;
     }
@@ -372,7 +377,11 @@ class ManageAboutUs extends Page
     {
         // Pastikan editan terakhir (yang belum sempat auto-save) ikut tersimpan lebih dulu.
         if (! $this->autosave()) {
-            Notification::make()->title('Tidak dapat publish')->body($this->saveMessage ?? 'Perbaiki isian yang bermasalah dulu.')->warning()->send();
+            Notification::make()
+                ->title('Tidak dapat publish')
+                ->body($this->invalidFields !== [] ? 'Perbaiki field berikut dulu: '.$this->invalidFieldsSummary().'.' : ($this->saveMessage ?? 'Perbaiki isian yang bermasalah dulu.'))
+                ->warning()
+                ->send();
 
             return;
         }
@@ -380,7 +389,7 @@ class ManageAboutUs extends Page
         try {
             $page = app(PublishAbout::class)->handle(AboutPage::current(), auth()->id(), $this->editorId);
         } catch (ValidationException $e) {
-            Notification::make()->title('Tidak dapat publish')->body(collect($e->errors())->flatten()->first())->danger()->send();
+            Notification::make()->title('Tidak dapat publish')->body($this->errorsAsHtml($e->errors()))->danger()->send();
 
             return;
         }

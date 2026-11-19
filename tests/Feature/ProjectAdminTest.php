@@ -17,6 +17,7 @@ use App\Models\MediaUsage;
 use App\Models\Project;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -289,6 +290,32 @@ class ProjectAdminTest extends TestCase
                 $this->assertNotEmpty($e->errors());
             }
         }
+    }
+
+    public function test_invalid_fields_are_named_in_the_subheading_and_in_the_publish_notification(): void
+    {
+        $p = $this->project();
+
+        $editor = Livewire::test(EditProject::class, ['record' => $p->id])
+            ->fillForm(['name' => '', 'category_id' => null])
+            ->call('autosave')
+            ->assertSet('saveState', 'invalid');
+
+        // Nama field (label) disebut, bukan hanya "ada field bermasalah".
+        $editor->assertSet('invalidFields', ['Name', 'Category'])
+            ->assertSee('Not saved — fix: Name, Category');
+
+        $editor->callAction('publish')
+            ->assertNotified(Notification::make()
+                ->title('Tidak dapat publish')
+                ->body('Perbaiki field berikut dulu: Name, Category.')
+                ->warning());
+
+        // Setelah diperbaiki, daftar kosong lagi.
+        $editor->fillForm(['name' => 'Tower One', 'category_id' => $p->category_id])
+            ->call('autosave')
+            ->assertSet('saveState', 'saved')
+            ->assertSet('invalidFields', []);
     }
 
     public function test_photos_can_be_joined_into_a_group_but_the_first_one_cannot(): void

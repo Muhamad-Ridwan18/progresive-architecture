@@ -8,6 +8,7 @@ use App\Actions\Projects\PublishProject;
 use App\Actions\Projects\SaveProjectDraft;
 use App\Actions\Projects\StaleDraftException;
 use App\Enums\ProjectStatus;
+use App\Filament\Concerns\ReportsInvalidFields;
 use App\Filament\Resources\Projects\ProjectResource;
 use App\Models\Project;
 use Filament\Actions\Action;
@@ -31,6 +32,8 @@ use Throwable;
  */
 class EditProject extends EditRecord
 {
+    use ReportsInvalidFields;
+
     protected static string $resource = ProjectResource::class;
 
     /** Versi draft yang dimuat editor ini. Dikirim saat menyimpan untuk mendeteksi tabrakan. */
@@ -80,7 +83,8 @@ class EditProject extends EditRecord
         try {
             // Memvalidasi seluruh form. Galat tampil di bawah field terkait.
             $data = $this->form->getState();
-        } catch (ValidationException) {
+        } catch (ValidationException $e) {
+            $this->rememberInvalidFields($e->errors());
             $this->saveState = 'invalid';
 
             return false;
@@ -103,6 +107,7 @@ class EditProject extends EditRecord
             foreach ($e->errors() as $field => $messages) {
                 $this->addError("data.{$field}", $messages[0]);
             }
+            $this->rememberInvalidFields($e->errors());
             $this->saveState = 'invalid';
 
             return false;
@@ -117,6 +122,7 @@ class EditProject extends EditRecord
         $this->draftVersion = $saved->draft_version;
         $this->saveState = 'saved';
         $this->savedAt = now()->format('H:i:s');
+        $this->clearInvalidFields();
 
         return true;
     }
@@ -150,7 +156,7 @@ class EditProject extends EditRecord
 
         $save = match ($this->saveState) {
             'saving' => 'Saving…',
-            'invalid' => 'Not saved — fix the highlighted fields',
+            'invalid' => $this->invalidFields !== [] ? 'Not saved — fix: '.$this->invalidFieldsSummary() : 'Not saved — fix the highlighted fields',
             'conflict' => 'Not saved — changed elsewhere, reload the page',
             'failed' => 'Not saved — failed, use Retry save',
             default => $this->savedAt ? "Saved {$this->savedAt}" : 'All changes saved',
@@ -247,7 +253,11 @@ class EditProject extends EditRecord
     {
         // Pastikan editan terakhir (yang belum sempat auto-save) ikut tersimpan lebih dulu.
         if (! $this->autosave()) {
-            Notification::make()->title('Tidak dapat publish')->body('Perbaiki field yang bermasalah dulu.')->warning()->send();
+            Notification::make()
+                ->title('Tidak dapat publish')
+                ->body($this->invalidFields !== [] ? 'Perbaiki field berikut dulu: '.$this->invalidFieldsSummary().'.' : 'Perbaiki field yang bermasalah dulu.')
+                ->warning()
+                ->send();
 
             return;
         }
@@ -255,7 +265,7 @@ class EditProject extends EditRecord
         try {
             $this->record = app(PublishProject::class)->handle($this->getRecord(), auth()->id(), $this->editorId);
         } catch (ValidationException $e) {
-            Notification::make()->title('Tidak dapat publish')->body(collect($e->errors())->flatten()->first())->danger()->send();
+            Notification::make()->title('Tidak dapat publish')->body($this->errorsAsHtml($e->errors()))->danger()->send();
 
             return;
         }

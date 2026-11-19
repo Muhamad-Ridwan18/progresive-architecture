@@ -372,6 +372,19 @@ class ArticleTest extends TestCase
         $this->assertTrue($published->refresh()->is_featured);
     }
 
+    public function test_article_editor_names_the_invalid_fields(): void
+    {
+        $this->admin();
+        $article = $this->draftArticle();
+
+        Livewire::test(EditArticle::class, ['record' => $article->getKey()])
+            ->fillForm(['title' => ''])
+            ->call('autosave')
+            ->assertSet('saveState', 'invalid')
+            ->assertSet('invalidFields', ['Title'])
+            ->assertSee('Not saved — fix: Title');
+    }
+
     public function test_category_used_by_an_article_cannot_be_deleted(): void
     {
         Article::factory()->create(['category_id' => $this->category->id]);

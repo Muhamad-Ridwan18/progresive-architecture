@@ -8,6 +8,7 @@ use App\Actions\Articles\SaveArticleDraft;
 use App\Actions\Articles\ScheduleArticle;
 use App\Actions\Projects\StaleDraftException;
 use App\Enums\ArticleStatus;
+use App\Filament\Concerns\ReportsInvalidFields;
 use App\Filament\Resources\Articles\ArticleResource;
 use App\Models\Article;
 use Filament\Actions\Action;
@@ -32,6 +33,8 @@ use Throwable;
  */
 class EditArticle extends EditRecord
 {
+    use ReportsInvalidFields;
+
     protected static string $resource = ArticleResource::class;
 
     #[Locked]
@@ -74,7 +77,8 @@ class EditArticle extends EditRecord
 
         try {
             $data = $this->form->getState();
-        } catch (ValidationException) {
+        } catch (ValidationException $e) {
+            $this->rememberInvalidFields($e->errors());
             $this->saveState = 'invalid';
 
             return false;
@@ -93,6 +97,7 @@ class EditArticle extends EditRecord
                 $this->addError("data.{$field}", $messages[0]);
             }
 
+            $this->rememberInvalidFields($e->errors());
             $this->saveState = 'invalid';
 
             return false;
@@ -107,6 +112,7 @@ class EditArticle extends EditRecord
         $this->draftVersion = $saved->draft_version;
         $this->saveState = 'saved';
         $this->savedAt = now()->format('H:i:s');
+        $this->clearInvalidFields();
 
         return true;
     }
@@ -142,7 +148,7 @@ class EditArticle extends EditRecord
 
         $save = match ($this->saveState) {
             'saving' => 'Saving…',
-            'invalid' => 'Not saved — fix the highlighted fields',
+            'invalid' => $this->invalidFields !== [] ? 'Not saved — fix: '.$this->invalidFieldsSummary() : 'Not saved — fix the highlighted fields',
             'conflict' => 'Not saved — changed elsewhere, reload the page',
             'failed' => 'Not saved — failed, use Retry save',
             default => $this->savedAt ? "Saved {$this->savedAt}" : 'All changes saved',
@@ -244,7 +250,11 @@ class EditArticle extends EditRecord
     private function publish(): void
     {
         if (! $this->autosave()) {
-            Notification::make()->title('Tidak dapat publish')->body('Perbaiki field yang bermasalah dulu.')->warning()->send();
+            Notification::make()
+                ->title('Tidak dapat publish')
+                ->body($this->invalidFields !== [] ? 'Perbaiki field berikut dulu: '.$this->invalidFieldsSummary().'.' : 'Perbaiki field yang bermasalah dulu.')
+                ->warning()
+                ->send();
 
             return;
         }
@@ -252,7 +262,7 @@ class EditArticle extends EditRecord
         try {
             $this->record = app(PublishArticle::class)->handle($this->getRecord(), auth()->id(), $this->editorId);
         } catch (ValidationException $e) {
-            Notification::make()->title('Tidak dapat publish')->body(collect($e->errors())->flatten()->first())->danger()->send();
+            Notification::make()->title('Tidak dapat publish')->body($this->errorsAsHtml($e->errors()))->danger()->send();
 
             return;
         }
@@ -267,7 +277,11 @@ class EditArticle extends EditRecord
     private function schedule(mixed $at): void
     {
         if (! $this->autosave()) {
-            Notification::make()->title('Tidak dapat menjadwalkan')->body('Perbaiki field yang bermasalah dulu.')->warning()->send();
+            Notification::make()
+                ->title('Tidak dapat menjadwalkan')
+                ->body($this->invalidFields !== [] ? 'Perbaiki field berikut dulu: '.$this->invalidFieldsSummary().'.' : 'Perbaiki field yang bermasalah dulu.')
+                ->warning()
+                ->send();
 
             return;
         }
@@ -275,7 +289,7 @@ class EditArticle extends EditRecord
         try {
             $this->record = app(ScheduleArticle::class)->schedule($this->getRecord(), Carbon::parse($at), auth()->id());
         } catch (ValidationException $e) {
-            Notification::make()->title('Tidak dapat menjadwalkan')->body(collect($e->errors())->flatten()->first())->danger()->send();
+            Notification::make()->title('Tidak dapat menjadwalkan')->body($this->errorsAsHtml($e->errors()))->danger()->send();
 
             return;
         }
