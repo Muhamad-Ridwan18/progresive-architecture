@@ -3,25 +3,33 @@
 namespace App\Console\Commands;
 
 use App\Actions\Projects\PublishProject;
+use App\Actions\Projects\SaveProjectDraft;
 use App\Models\MediaUsage;
 use App\Models\Project;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Menyusun ulang galeri proyek menurut ketentuan grup foto: foto berurutan dengan jenis yang sama (eksterior atau interior,
- * dibaca dari nama berkas aslinya) dikelompokkan 2 sampai 3 foto, dan tiap grup mendapat satu caption di foto pertamanya.
+ * Menyusun ulang galeri proyek menurut ketentuan grup foto: foto galeri dikelompokkan 2 sampai 3 foto (foto berurutan
+ * yang jenisnya sama, eksterior atau interior dari nama berkas asli, tidak dicampur), dan narasi proyek dipecah:
+ * paragraf pertama tetap di header, paragraf berikutnya menjadi caption grup berurutan (grup 1, 2, 3, ...). Tidak ada
+ * teks yang dikarang dan tidak ada yang hilang; paragraf yang lebih banyak dari grup digabung ke caption grup terakhir.
  *
- * Aman diulang: grup dan caption dibuat ulang dari nol setiap kali dijalankan (`--dry-run` hanya menampilkan rencananya).
- * Proyek yang slug-nya diawali "testing" dilewati. Dengan `--publish`, hasilnya langsung dipublikasikan.
+ * Proyek yang sudah tersusun (ada foto yang digabung) dilewati kecuali dengan `--force`, yang menyusun ulang dengan
+ * menyatukan kembali narasi (deskripsi + caption grup yang ada). Proyek berslug "testing*" dan yang tanpa foto galeri
+ * dilewati. `--dry-run` hanya menampilkan rencana; `--publish` langsung mempublikasikan hasilnya.
  */
 class ArrangeProjectGalleries extends Command
 {
-    protected $signature = 'projects:arrange-galleries {--dry-run : Tampilkan rencana tanpa mengubah apa pun} {--publish : Publikasikan proyek setelah disusun}';
+    protected $signature = 'projects:arrange-galleries
+        {--dry-run : Tampilkan rencana tanpa mengubah apa pun}
+        {--publish : Publikasikan proyek setelah disusun}
+        {--force : Susun ulang proyek yang sudah tersusun}';
 
-    protected $description = 'Susun galeri semua proyek menjadi grup 2-3 foto dengan satu caption per grup';
+    protected $description = 'Susun galeri semua proyek menjadi grup 2-3 foto dan pecah narasi menjadi caption grup';
 
     public function handle(): int
     {
@@ -40,20 +48,31 @@ class ArrangeProjectGalleries extends Command
                     return;
                 }
 
-                $plan = $this->plan($project, $photos);
+                $alreadyArranged = $photos->contains(fn (MediaUsage $u): bool => $u->join_previous);
+
+                if ($alreadyArranged && ! $this->option('force')) {
+                    $this->line("- {$project->slug}: sudah tersusun, dilewati (gunakan --force untuk menyusun ulang).");
+
+                    return;
+                }
+
+                $paragraphs = $this->narrative($project, $photos, $alreadyArranged);
+                $plan = $this->plan($photos, $paragraphs);
 
                 $this->line("- {$project->slug}: {$photos->count()} foto menjadi {$plan->count()} grup ("
-                    .$plan->map(fn (array $group): int => $group['photos']->count())->implode(' + ').').');
+                    .$plan->map(fn (array $group): int => $group['photos']->count())->implode(' + ')
+                    .'); '.max(0, count($paragraphs) - 1).' paragraf narasi menjadi caption.');
 
                 foreach ($plan as $number => $group) {
-                    $this->line('    '.($number + 1).'. '.$group['caption'].' ['.$group['photos']->count().' foto]');
+                    $preview = $group['caption'] === null ? '(tanpa caption)' : Str::limit(str_replace("\n", ' ', $group['caption']), 70);
+                    $this->line('    '.($number + 1).'. ['.$group['photos']->count().' foto] '.$preview);
                 }
 
                 if ($dryRun) {
                     return;
                 }
 
-                $this->apply($plan);
+                $this->apply($project, $plan, $paragraphs[0] ?? null);
                 $project->refresh()->syncStatus();
 
                 if ($this->option('publish')) {
@@ -74,14 +93,38 @@ class ArrangeProjectGalleries extends Command
     }
 
     /**
+     * Narasi proyek sebagai daftar paragraf. Pada penyusunan ulang, caption grup yang ada disatukan kembali di belakang
+     * deskripsi supaya tidak hilang.
+     *
      * @param  Collection<int, MediaUsage>  $photos
-     * @return Collection<int, array{caption: string, photos: Collection<int, MediaUsage>}>
+     * @return list<string>
      */
-    private function plan(Project $project, Collection $photos): Collection
+    private function narrative(Project $project, Collection $photos, bool $alreadyArranged): array
     {
-        $name = $project->draftFields()['name'] ?? $project->name;
+        $description = (string) ($project->draftFields()['description'] ?? '');
 
-        // Foto berurutan dengan jenis sama menjadi satu rangkaian (run).
+        $paragraphs = collect(preg_split('/\R{2,}/', trim($description)) ?: [])->map(fn (string $p): string => trim($p));
+
+        if ($alreadyArranged) {
+            $existing = $photos
+                ->filter(fn (MediaUsage $u): bool => filled($u->note) && blank($u->note_by))
+                ->flatMap(fn (MediaUsage $u): array => preg_split('/\R{2,}/', trim((string) $u->note)) ?: [])
+                ->map(fn (string $p): string => trim($p));
+
+            $paragraphs = $paragraphs->concat($existing);
+        }
+
+        return $paragraphs->filter()->values()->all();
+    }
+
+    /**
+     * @param  Collection<int, MediaUsage>  $photos
+     * @param  list<string>  $paragraphs
+     * @return Collection<int, array{caption: ?string, photos: Collection<int, MediaUsage>}>
+     */
+    private function plan(Collection $photos, array $paragraphs): Collection
+    {
+        // Foto berurutan dengan jenis sama menjadi satu rangkaian (run); jenis berbeda tidak dicampur dalam satu grup.
         $runs = [];
 
         foreach ($photos as $photo) {
@@ -98,17 +141,32 @@ class ArrangeProjectGalleries extends Command
         $groups = collect();
 
         foreach ($runs as $run) {
-            $label = $run['kind'] === null ? $name : $name.' — '.$run['kind'];
-
             foreach ($this->split($run['photos']) as $chunk) {
-                $groups->push(['caption' => $label, 'photos' => $chunk]);
+                $groups->push(['caption' => null, 'photos' => $chunk]);
             }
+        }
+
+        // Paragraf ke-2 dan seterusnya menjadi caption grup berurutan; kelebihannya digabung ke grup terakhir.
+        $captions = array_slice($paragraphs, 1);
+
+        foreach ($groups as $index => $group) {
+            if (! isset($captions[$index])) {
+                break;
+            }
+
+            $text = $captions[$index];
+
+            if ($index === $groups->count() - 1) {
+                $text = implode("\n\n", array_slice($captions, $index));
+            }
+
+            $groups[$index] = ['caption' => $text, 'photos' => $group['photos']];
         }
 
         return $groups;
     }
 
-    /** Jenis foto dari nama berkas aslinya, mis. "AD HOUSE - INTERIOR 13.jpg". */
+    /** Jenis foto dari nama berkas aslinya, mis. "AD HOUSE - INTERIOR 13.jpg" (null bila tidak terbaca). */
     private function kind(string $originalName): ?string
     {
         return match (true) {
@@ -157,10 +215,10 @@ class ArrangeProjectGalleries extends Command
         return $chunks;
     }
 
-    /** @param  Collection<int, array{caption: string, photos: Collection<int, MediaUsage>}>  $plan */
-    private function apply(Collection $plan): void
+    /** @param  Collection<int, array{caption: ?string, photos: Collection<int, MediaUsage>}>  $plan */
+    private function apply(Project $project, Collection $plan, ?string $headerParagraph): void
     {
-        DB::transaction(function () use ($plan): void {
+        DB::transaction(function () use ($project, $plan, $headerParagraph): void {
             foreach ($plan as $group) {
                 foreach ($group['photos'] as $index => $photo) {
                     $photo->update([
@@ -170,6 +228,11 @@ class ArrangeProjectGalleries extends Command
                         'caption' => null,
                     ]);
                 }
+            }
+
+            // Header hanya memuat paragraf pertama; sisanya sudah menjadi caption grup di atas.
+            if ($headerParagraph !== null && $plan->contains(fn (array $g): bool => $g['caption'] !== null)) {
+                app(SaveProjectDraft::class)->handle($project->refresh(), ['description' => $headerParagraph], $project->draft_version);
             }
         });
     }
