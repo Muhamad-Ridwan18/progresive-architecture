@@ -291,6 +291,51 @@ class ProjectAdminTest extends TestCase
         }
     }
 
+    public function test_photos_can_be_joined_into_a_group_but_the_first_one_cannot(): void
+    {
+        $p = $this->project();
+        $m = $this->manager($p, 'gallery')->set('uploads', [$this->photo('a.jpg'), $this->photo('b.jpg', 900, 700)]);
+        $p = app(PublishProject::class)->handle($p->fresh());
+
+        [$first, $second] = $p->usages(draft: true, role: 'gallery')->all();
+
+        $m->call('setJoin', $first->id, true);
+        $this->assertFalse($first->fresh()->join_previous, 'Foto pertama selalu memulai grup.');
+
+        $m->call('setJoin', $second->id, true);
+        $this->assertTrue($second->fresh()->join_previous);
+        $this->assertSame(ProjectStatus::UnpublishedChanges, $p->fresh()->status);
+
+        $m->call('setJoin', $second->id, false);
+        $this->assertFalse($second->fresh()->join_previous);
+        $this->assertSame(ProjectStatus::Published, $p->fresh()->status, 'Dikembalikan seperti semula: tidak ada perubahan lagi.');
+    }
+
+    public function test_media_manager_shows_upload_progress_and_autosaves_text_while_typing(): void
+    {
+        $p = $this->project();
+        $m = $this->manager($p, 'gallery')->set('uploads', [$this->photo('a.jpg'), $this->photo('b.jpg', 900, 700)]);
+
+        $html = $m->html();
+
+        // Progres unggah (bilah dan persen), simpan otomatis saat mengetik, dan peringatan sebelum menutup halaman.
+        $this->assertStringContainsString('role="progressbar"', $html);
+        $this->assertStringContainsString('livewire-upload-progress', $html);
+        $this->assertStringContainsString('wire:input.debounce.700ms', $html);
+        $this->assertStringContainsString('beforeunload', $html);
+        $this->assertStringContainsString('Gabung dengan foto di atas', $html);
+        $this->assertSame(1, substr_count($html, 'Gabung dengan foto di atas (satu deskripsi)'), 'Foto pertama tidak punya pilihan gabung.');
+    }
+
+    public function test_joining_photos_is_only_available_in_the_project_gallery(): void
+    {
+        $p = $this->project();
+        $m = $this->manager($p, 'cover')->set('uploads', [$this->photo('c.jpg')]);
+        $usage = $p->usages(draft: true, role: 'cover')->first();
+
+        $m->call('setJoin', $usage->id, true)->assertForbidden();
+    }
+
     // ---------------------------------------------------------------- penanda perubahan
 
     public function test_editor_summarises_what_has_changed_since_publish(): void

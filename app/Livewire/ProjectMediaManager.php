@@ -17,6 +17,7 @@ use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -59,6 +60,12 @@ class ProjectMediaManager extends Component
     public function isCover(): bool
     {
         return $this->role !== Project::ROLE_GALLERY;
+    }
+
+    /** Galeri proyek (bukan artikel, About, atau cover): satu-satunya yang mendukung grup foto dan teks deskripsi. */
+    public function isProjectGallery(): bool
+    {
+        return $this->kind === 'project' && $this->role === Project::ROLE_GALLERY;
     }
 
     public function isTeamPhoto(): bool
@@ -154,6 +161,25 @@ class ProjectMediaManager extends Component
         $this->changed();
     }
 
+    /**
+     * Gabungkan foto dengan foto di atasnya (satu grup, satu deskripsi), atau pisahkan lagi. Foto pertama galeri
+     * selalu memulai grup, jadi tidak dapat digabung.
+     */
+    public function setJoin(int $usageId, bool $join): void
+    {
+        $this->authorizeAdmin();
+
+        abort_unless($this->isProjectGallery(), 403);
+
+        $first = $this->project()->usages(true, $this->role)->first();
+
+        $this->usage($usageId)->update(['join_previous' => $join && $first?->id !== $usageId]);
+
+        $this->changed();
+    }
+
+    /** Disimpan otomatis saat mengetik (debounce di browser); tidak perlu merender ulang agar ketikan tidak tertimpa. */
+    #[Renderless]
     public function updateMeta(int $usageId, string $field, ?string $value): void
     {
         $this->authorizeAdmin();

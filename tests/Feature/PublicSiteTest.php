@@ -404,37 +404,18 @@ class PublicSiteTest extends TestCase
         $this->assertSame(3, substr_count($button, 'block h-0.5 bg-ink'));
     }
 
-    public function test_project_opens_in_place_from_the_list_through_a_panel_fragment(): void
+    public function test_clicking_a_project_goes_straight_to_its_page_without_an_inline_panel(): void
     {
-        $project = $this->published('Rumah Panel', null, ['description' => 'Narasi singkat proyek.', 'location' => 'Bandung', 'client' => 'Klien Satu']);
-        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover', ['alt_text' => 'Fasad']);
-        foreach ([2, 3] as $seed) {
-            app(AttachMedia::class)->handle($this->media($seed), $project->fresh(), 'gallery', ['sort_order' => $seed, 'caption' => "Keterangan foto {$seed}"]);
-        }
-        app(PublishProject::class)->handle($project->fresh());
+        $project = $this->published('Rumah Langsung');
 
-        // Tile membawa alamat panel; tanpa JavaScript tautannya tetap ke halaman detail.
         $this->get('/')->assertOk()
-            ->assertSee('data-panel="'.route('projects.panel', $project->slug).'"', false)
-            ->assertSee('href="'.route('projects.show', $project->slug).'"', false);
+            ->assertSee('href="'.route('projects.show', $project->slug).'" data-project-link', false)
+            ->assertDontSee('data-panel', false);
 
-        $panel = $this->get(route('projects.panel', $project->slug))->assertOk()
-            ->assertSee('data-project-panel', false)
-            ->assertSee('Rumah Panel')
-            ->assertSee('Narasi singkat proyek.')
-            ->assertSee('Klien Satu')
-            ->assertSee('data-panel-scroller', false)
-            ->assertSee('Keterangan foto 2')
-            ->assertSee('Keterangan foto 3')
-            ->assertSee('</span> / 03', false)
-            ->assertSee(route('projects.show', $project->slug), false)
-            ->getContent();
-
-        // Fragmen, bukan halaman penuh.
-        $this->assertStringNotContainsString('<html', $panel);
+        $this->get('/projects/'.$project->slug.'/panel')->assertNotFound();
     }
 
-    public function test_text_added_after_a_photo_shows_in_the_strip_as_narrative_or_quote(): void
+    public function test_text_added_after_a_photo_shows_on_the_project_page_as_narrative_or_quote(): void
     {
         $project = $this->published('Rumah Teks');
         app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
@@ -442,23 +423,54 @@ class PublicSiteTest extends TestCase
         app(AttachMedia::class)->handle($this->media(3), $project->fresh(), 'gallery', ['sort_order' => 2, 'note' => 'Rumah ini bernapas.', 'note_by' => 'Hilmi, Founder']);
         app(PublishProject::class)->handle($project->fresh());
 
-        $panel = $this->get(route('projects.panel', $project->slug))->assertOk()
+        $page = $this->get(route('projects.show', $project->slug))->assertOk()
             ->assertSee('Narasi setelah foto kedua.')
             ->assertSee('Rumah ini bernapas.')
             ->assertSee('Hilmi, Founder')
-            ->assertSee('01', false)
             ->getContent();
 
         // Kutipan tampil dengan tanda kutip; teks biasa tidak.
-        $this->assertStringContainsString('&ldquo;Rumah ini bernapas.&rdquo;', $panel);
-        $this->assertStringNotContainsString('&ldquo;Narasi setelah foto kedua.', $panel);
-
-        $this->get(route('projects.show', $project->slug))->assertOk()
-            ->assertSee('Narasi setelah foto kedua.')
-            ->assertSee('Hilmi, Founder');
+        $this->assertStringContainsString('&ldquo;Rumah ini bernapas.&rdquo;', $page);
+        $this->assertStringNotContainsString('&ldquo;Narasi setelah foto kedua.', $page);
     }
 
-    public function test_project_credits_show_in_the_panel_and_on_the_detail_page(): void
+    public function test_joined_photos_share_one_description_and_sit_in_one_tidy_row(): void
+    {
+        $project = $this->published('Rumah Grup');
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
+
+        // Grup 1: foto 2, 3 (digabung), 4 (digabung) dengan satu deskripsi. Grup 2: foto 5 sendirian.
+        app(AttachMedia::class)->handle($this->media(2), $project->fresh(), 'gallery', ['sort_order' => 1, 'note' => 'Deskripsi grup pertama.']);
+        app(AttachMedia::class)->handle($this->media(3), $project->fresh(), 'gallery', ['sort_order' => 2, 'join_previous' => true, 'note' => 'Teks foto bergabung diabaikan.']);
+        app(AttachMedia::class)->handle($this->media(4), $project->fresh(), 'gallery', ['sort_order' => 3, 'join_previous' => true]);
+        app(AttachMedia::class)->handle($this->media(5), $project->fresh(), 'gallery', ['sort_order' => 4, 'note' => 'Deskripsi grup kedua.']);
+        app(PublishProject::class)->handle($project->fresh());
+
+        $html = $this->get(route('projects.show', $project->slug))->assertOk()
+            ->assertSee('Deskripsi grup pertama.')
+            ->assertSee('Deskripsi grup kedua.')
+            ->assertDontSee('Teks foto bergabung diabaikan.')
+            ->getContent();
+
+        // Dua grup; grup pertama berisi tiga foto dalam satu baris sama tinggi.
+        $this->assertSame(2, substr_count($html, 'data-photo-group'));
+        $this->assertSame(2, substr_count($html, 'class="photo-row"'));
+        $this->assertSame(4, substr_count($html, 'class="photo-cell"'));
+    }
+
+    public function test_the_first_gallery_photo_always_starts_a_group_even_if_marked_joined(): void
+    {
+        $project = $this->published('Rumah Pertama');
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
+        app(AttachMedia::class)->handle($this->media(2), $project->fresh(), 'gallery', ['sort_order' => 1, 'join_previous' => true, 'note' => 'Tetap tampil.']);
+        app(PublishProject::class)->handle($project->fresh());
+
+        $this->get(route('projects.show', $project->slug))->assertOk()
+            ->assertSee('Tetap tampil.')
+            ->assertSee('data-photo-group', false);
+    }
+
+    public function test_project_credits_show_on_the_project_page(): void
     {
         $project = $this->published('Rumah Kredit', null, ['credits' => [
             ['title' => 'Partner in Charge', 'names' => "Hilmi Haerul Umam\n  Nisa Yasyfa  \n\n"],
@@ -467,14 +479,6 @@ class PublicSiteTest extends TestCase
         ]]);
         app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
         app(PublishProject::class)->handle($project->fresh());
-
-        $this->get(route('projects.panel', $project->slug))->assertOk()
-            ->assertSee('Partner in Charge')
-            ->assertSee('Hilmi Haerul Umam')
-            ->assertSee('Nisa Yasyfa')
-            ->assertSee('Project Team')
-            ->assertSee('Aldy Rifky')
-            ->assertDontSee('Grup Kosong');
 
         $this->get(route('projects.show', $project->slug))->assertOk()
             ->assertSee('Credits')
@@ -486,7 +490,6 @@ class PublicSiteTest extends TestCase
         $project = $this->published('Rumah Tanpa Kredit');
 
         $this->get(route('projects.show', $project->slug))->assertOk()->assertDontSee('aria-label="Credits"', false);
-        $this->get(route('projects.panel', $project->slug))->assertOk()->assertDontSee('Project Team');
     }
 
     public function test_project_map_shows_only_when_both_coordinates_are_set(): void
@@ -503,26 +506,15 @@ class PublicSiteTest extends TestCase
 
         $embed = 'openstreetmap.org/export/embed.html';
 
-        $this->get(route('projects.panel', $with->slug))->assertOk()
+        $this->get(route('projects.show', $with->slug))->assertOk()
             ->assertSee($embed, false)
             ->assertSee('marker=-6.917464%2C107.619123', false)
             ->assertSee('grayscale(1)', false)
-            ->assertSee('Open map');
+            ->assertSee('Open map')
+            ->assertSee('aria-label="Location"', false);
 
-        $this->get(route('projects.show', $with->slug))->assertOk()->assertSee($embed, false)->assertSee('aria-label="Location"', false);
-
-        $this->get(route('projects.panel', $half->slug))->assertOk()->assertDontSee($embed, false);
-        $this->get(route('projects.panel', $none->slug))->assertOk()->assertDontSee($embed, false);
+        $this->get(route('projects.show', $half->slug))->assertOk()->assertDontSee($embed, false);
         $this->get(route('projects.show', $none->slug))->assertOk()->assertDontSee('aria-label="Location"', false);
-    }
-
-    public function test_panel_is_not_available_for_unpublished_projects(): void
-    {
-        $live = $this->published('Rumah Live');
-        $draft = app(CreateProject::class)->handle(['name' => 'Rumah Draft', 'category_id' => $live->category_id]);
-
-        $this->get(route('projects.panel', $draft->slug))->assertNotFound();
-        $this->get('/projects/tidak-ada/panel')->assertNotFound();
     }
 
     public function test_footer_always_credits_webyouneed(): void

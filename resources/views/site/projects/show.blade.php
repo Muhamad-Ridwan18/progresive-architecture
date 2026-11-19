@@ -1,4 +1,3 @@
-@use('App\Support\GridPattern')
 @use('Illuminate\Support\Str')
 
 @php
@@ -59,45 +58,67 @@
             </div>
         @endif
 
-        {{-- Galeri: pola ditentukan sistem dari urutan foto (SRS FR-FE-031). Foto membuka lightbox. --}}
+        {{-- Galeri: foto dikelompokkan; tiap grup (1 sampai beberapa foto) berbagi satu deskripsi di sampingnya. Foto dalam
+             satu baris dibuat sama tinggi (lebarnya mengikuti rasio asli) agar rapi. Foto membuka lightbox. --}}
         @if ($project->gallery->isNotEmpty())
+            @php $photoNumber = 0; @endphp
+
             <section aria-label="Gallery" class="mt-16 md:mt-24">
-                <div id="gallery" data-gallery class="grid grid-cols-1 items-start gap-6 md:grid-cols-12 md:gap-8">
-                    @foreach ($project->gallery as $i => $photo)
-                        @php
-                            $file = $photo->file;
-                            $pattern = GridPattern::gallery($i);
-                            // Resolusi tinggi dimuat saat foto dibuka (SRS FR-FE-044).
-                            $largeWidth = $file->bestVariant(2560) ?? $file->width;
-                            $largeHeight = (int) round($largeWidth * $file->height / max(1, $file->width));
-                        @endphp
+                <div id="gallery" data-gallery class="space-y-14 md:space-y-24">
+                    @foreach ($project->galleryGroups() as $group)
+                        @php $hasText = filled($group['note']); @endphp
 
-                        <figure class="col-span-1 {{ $pattern['col'] }} {{ $pattern['offset'] }}">
-                            <a href="{{ $file->url(2560) }}"
-                               data-pswp-width="{{ $largeWidth }}"
-                               data-pswp-height="{{ $largeHeight }}"
-                               class="block overflow-hidden bg-bg-soft"
-                               aria-label="Open photo {{ $i + 1 }} of {{ $project->gallery->count() }}">
-                                <x-responsive-image :usage="$photo" :alt="$project->name" :sizes="$pattern['sizes']" />
-                            </a>
-                            @if ($photo->caption)
-                                <figcaption class="mt-2 text-small text-ink-muted">{{ $photo->caption }}</figcaption>
-                            @endif
-                        </figure>
+                        <div data-photo-group class="grid items-start gap-6 md:grid-cols-12 md:gap-x-8">
+                            <div class="space-y-4 md:space-y-6 {{ $hasText ? 'md:col-span-8' : 'md:col-span-12' }}">
+                                {{-- Maksimal 3 foto per baris; grup yang lebih besar turun ke baris berikutnya. --}}
+                                @foreach ($group['photos']->chunk(3) as $row)
+                                    @php
+                                        $sum = $row->sum(fn ($u) => $u->file->width / max(1, $u->file->height));
+                                    @endphp
 
-                        {{-- Teks tambahan setelah foto (narasi atau kutipan), selebar baris. --}}
-                        @if ($photo->note)
-                            <div class="col-span-1 md:col-span-12">
-                                @if ($photo->note_by)
-                                    <blockquote class="max-w-[48ch] md:ml-[25%]">
-                                        <p class="whitespace-pre-line text-h2 leading-[1.35] tracking-[-0.02em]">&ldquo;{{ $photo->note }}&rdquo;</p>
-                                        <footer class="mt-4 text-label uppercase tracking-[0.08em] text-ink-muted">{{ $photo->note_by }}</footer>
-                                    </blockquote>
-                                @else
-                                    <x-prose :text="$photo->note" class="max-w-[62ch] text-lead md:ml-[25%]" />
-                                @endif
+                                    <div class="photo-row" style="max-width: min(100%, calc(80vh * {{ round($sum, 4) }}))">
+                                        @foreach ($row as $photo)
+                                            @php
+                                                $file = $photo->file;
+                                                $ratio = $file->width / max(1, $file->height);
+                                                $photoNumber++;
+                                                // Resolusi tinggi dimuat saat foto dibuka (SRS FR-FE-044).
+                                                $largeWidth = $file->bestVariant(2560) ?? $file->width;
+                                                $largeHeight = (int) round($largeWidth * $file->height / max(1, $file->width));
+                                                $share = max(20, (int) round(($hasText ? 62 : 92) * $ratio / max(0.01, $sum)));
+                                            @endphp
+
+                                            <figure class="photo-cell" style="--r: {{ round($ratio, 4) }}">
+                                                <a href="{{ $file->url(2560) }}"
+                                                   data-pswp-width="{{ $largeWidth }}"
+                                                   data-pswp-height="{{ $largeHeight }}"
+                                                   class="block overflow-hidden bg-bg-soft"
+                                                   aria-label="Open photo {{ $photoNumber }} of {{ $project->gallery->count() }}">
+                                                    <x-responsive-image :usage="$photo" :alt="$project->name" :sizes="'(min-width: 768px) '.$share.'vw, 100vw'" />
+                                                </a>
+                                                @if ($photo->caption)
+                                                    <figcaption class="mt-2 text-small text-ink-muted">{{ $photo->caption }}</figcaption>
+                                                @endif
+                                            </figure>
+                                        @endforeach
+                                    </div>
+                                @endforeach
                             </div>
-                        @endif
+
+                            {{-- Deskripsi grup: narasi, atau kutipan bila pengucapnya diisi. --}}
+                            @if ($hasText)
+                                <div class="md:sticky md:top-24 md:col-span-4">
+                                    @if ($group['note_by'])
+                                        <blockquote>
+                                            <p class="whitespace-pre-line text-h2 tracking-[-0.02em]">&ldquo;{{ $group['note'] }}&rdquo;</p>
+                                            <footer class="mt-4 text-label uppercase tracking-[0.08em] text-ink-muted">{{ $group['note_by'] }}</footer>
+                                        </blockquote>
+                                    @else
+                                        <x-prose :text="$group['note']" class="text-body" />
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
                     @endforeach
                 </div>
             </section>

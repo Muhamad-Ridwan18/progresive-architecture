@@ -33,6 +33,33 @@ final class PublicProject
         public readonly bool $isDraft,
     ) {}
 
+    /**
+     * Galeri dikelompokkan: foto yang digabung dengan foto di atasnya masuk ke grup yang sama dan berbagi satu
+     * deskripsi (milik foto pertama grup). Foto pertama galeri selalu memulai grup.
+     *
+     * @return list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string}>
+     */
+    public function galleryGroups(): array
+    {
+        $groups = [];
+
+        foreach ($this->gallery as $index => $usage) {
+            if ($index === 0 || ! $usage->join_previous) {
+                $groups[] = [
+                    'photos' => collect([$usage]),
+                    'note' => filled($usage->note) ? $usage->note : null,
+                    'note_by' => filled($usage->note_by) ? $usage->note_by : null,
+                ];
+
+                continue;
+            }
+
+            $groups[array_key_last($groups)]['photos']->push($usage);
+        }
+
+        return $groups;
+    }
+
     /** Peta hanya tampil bila kedua koordinat terisi. */
     public function hasMap(): bool
     {

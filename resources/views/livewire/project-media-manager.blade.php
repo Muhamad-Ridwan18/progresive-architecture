@@ -3,7 +3,18 @@
 @endphp
 
 {{-- Gaya memakai komponen Filament + inline style agar tidak perlu membangun tema khusus. --}}
-<div style="display:flex;flex-direction:column;gap:12px">
+{{-- Alpine: progres unggah (event livewire-upload-*), penanda "belum tersimpan", dan peringatan sebelum menutup halaman
+     saat unggahan atau simpanan otomatis masih berjalan. --}}
+<div x-data="{ uploading: false, progress: 0, count: 0, dirty: false }"
+     x-init="Livewire.hook('commit', ({ succeed, fail }) => { succeed(() => { dirty = false }); fail(() => { dirty = false }) })"
+     x-on:livewire-upload-start="uploading = true; progress = 0"
+     x-on:livewire-upload-progress="progress = $event.detail.progress"
+     x-on:livewire-upload-finish="uploading = false"
+     x-on:livewire-upload-error="uploading = false"
+     x-on:livewire-upload-cancel="uploading = false"
+     x-on:input="if ($event.target.matches('[data-autosave]')) { dirty = true }"
+     x-on:beforeunload.window="if (uploading || dirty) { $event.preventDefault(); $event.returnValue = '' }"
+     style="display:flex;flex-direction:column;gap:12px">
 
     {{-- Polling hanya aktif selama ada gambar yang masih menunggu/diproses (SRS 12.2 - status per gambar). --}}
     @if ($hasPending)
@@ -22,15 +33,34 @@
                    wire:model="uploads"
                    accept="image/jpeg,image/png,image/webp"
                    @if (! $this->isCover()) multiple @endif
+                   x-on:change="count = $event.target.files.length"
                    style="display:none">
         </label>
-        <span wire:loading wire:target="uploads" style="margin-left:8px;font-size:13px;opacity:.7">Uploading…</span>
         <span style="margin-left:8px;font-size:12px;opacity:.6">
             JPG, PNG, atau WebP · maks {{ (int) (config('media.max_size_kb') / 1024) }} MB per gambar
             @if (! $this->isCover())
                 · maks {{ config('media.max_files_per_batch') }} sekali unggah
             @endif
         </span>
+
+        {{-- Progres unggah langsung: berapa foto dan berapa persen yang sudah terkirim. --}}
+        <div x-show="uploading" x-cloak role="progressbar" aria-label="Progres unggah" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100" style="margin-top:10px;max-width:460px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                <span>Mengunggah <span x-text="count"></span> foto…</span>
+                <strong x-text="progress + '%'"></strong>
+            </div>
+            <div style="height:8px;border-radius:4px;background:rgba(128,128,128,.25);overflow:hidden">
+                <div :style="'width:' + progress + '%'" style="height:100%;background:var(--primary-600,#475569);transition:width .2s ease-out"></div>
+            </div>
+        </div>
+
+        <div wire:loading wire:target="uploads" x-show="!uploading" style="margin-top:8px;font-size:12px;opacity:.7">Memproses foto…</div>
+
+        {{-- Simpan otomatis: ketikan dikirim sebentar setelah berhenti, jadi tidak hilang saat halaman dimuat ulang. --}}
+        <div style="margin-top:8px;font-size:12px;opacity:.6" aria-live="polite">
+            <span x-show="dirty" x-cloak>Menyimpan perubahan…</span>
+            <span x-show="!dirty">Perubahan tersimpan otomatis.</span>
+        </div>
     </div>
 
     @foreach ($uploadErrors as $message)
@@ -51,7 +81,9 @@
                 $thumb = $ready ? $file->url(800) : null;
             @endphp
 
-            <div wire:key="usage-{{ $item->id }}" style="border:1px solid rgba(128,128,128,.3);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px">
+            @php $joined = $this->isProjectGallery() && $item->join_previous && ! $loop->first; @endphp
+
+            <div wire:key="usage-{{ $item->id }}" style="border:1px solid rgba(128,128,128,.3);{{ $joined ? 'border-left:4px solid var(--primary-600,#475569);' : '' }}border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px">
 
                 {{-- Pratinjau; pada cover, klik untuk menentukan titik fokus --}}
                 @if ($thumb)
@@ -104,25 +136,39 @@
                     <span style="font-size:11px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ $file->original_name }}">{{ $file->original_name }}</span>
                 </div>
 
-                {{-- Alt text dan caption disimpan per penggunaan (SRS 12.6) --}}
-                <input type="text" placeholder="Alt text (deskripsi gambar)" maxlength="255"
+                {{-- Alt text dan caption disimpan per penggunaan (SRS 12.6). Semua isian tersimpan otomatis saat mengetik. --}}
+                <input type="text" placeholder="Alt text (deskripsi gambar)" maxlength="255" data-autosave
                        value="{{ $item->alt_text }}"
-                       wire:change="updateMeta({{ $item->id }}, 'alt_text', $event.target.value)"
+                       wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'alt_text', $event.target.value)"
                        style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
                 @if (! $this->isCover())
-                    <input type="text" placeholder="Caption (opsional)" maxlength="1000"
+                    <input type="text" placeholder="Caption (opsional)" maxlength="1000" data-autosave
                            value="{{ $item->caption }}"
-                           wire:change="updateMeta({{ $item->id }}, 'caption', $event.target.value)"
+                           wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'caption', $event.target.value)"
                            style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
+                @endif
 
-                    {{-- Teks yang tampil tepat setelah foto ini di deretan foto proyek (seperti narasi atau kutipan di BIG). --}}
-                    <textarea placeholder="Teks setelah foto ini (opsional): narasi atau kutipan" rows="3" maxlength="3000"
-                              wire:change="updateMeta({{ $item->id }}, 'note', $event.target.value)"
-                              style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent;resize:vertical">{{ $item->note }}</textarea>
-                    <input type="text" placeholder="Pengucap kutipan (opsional), mis. Nama, Jabatan" maxlength="255"
-                           value="{{ $item->note_by }}"
-                           wire:change="updateMeta({{ $item->id }}, 'note_by', $event.target.value)"
-                           style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
+                @if ($this->isProjectGallery())
+                    {{-- Grup foto: beberapa foto berbagi satu deskripsi. Foto pertama galeri selalu memulai grup. --}}
+                    @unless ($loop->first)
+                        <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer">
+                            <input type="checkbox" @checked($joined) wire:change="setJoin({{ $item->id }}, $event.target.checked)">
+                            Gabung dengan foto di atas (satu deskripsi)
+                        </label>
+                    @endunless
+
+                    @if ($joined)
+                        <div style="font-size:12px;opacity:.7">Deskripsi mengikuti foto pertama di grup ini.</div>
+                    @else
+                        {{-- Deskripsi grup: tampil di samping foto-foto grup ini di halaman proyek (narasi atau kutipan). --}}
+                        <textarea placeholder="Deskripsi untuk foto ini (dan foto yang digabung di bawahnya)" rows="3" maxlength="3000" data-autosave
+                                  wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'note', $event.target.value)"
+                                  style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent;resize:vertical">{{ $item->note }}</textarea>
+                        <input type="text" placeholder="Pengucap kutipan (opsional), mis. Nama, Jabatan" maxlength="255" data-autosave
+                               value="{{ $item->note_by }}"
+                               wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'note_by', $event.target.value)"
+                               style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
+                    @endif
                 @endif
 
                 <div style="display:flex;gap:6px;flex-wrap:wrap">

@@ -296,122 +296,27 @@ body:has(#project-grid) main {
     }
 }
 
-/* Panel proyek yang membesar di tempat: tinggi 0 -> penuh, isi memudar masuk. */
-.project-panel {
-    display: grid;
-    grid-template-rows: 0fr;
+/* Galeri proyek: foto dalam satu baris sama tinggi (lebar mengikuti rasio asli); di layar kecil bertumpuk. */
+.photo-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.photo-cell {
     min-width: 0;
-}
-
-.project-panel > div {
-    min-height: 0;
-    min-width: 0;
-    /* Hanya dipotong secara vertikal (saat tinggi beranimasi); horizontal dibiarkan agar deretan foto meluber sampai tepi layar. */
-    overflow-x: visible;
-    overflow-y: clip;
-}
-
-.project-panel.is-open {
-    grid-template-rows: 1fr;
-}
-
-.project-panel > div > div {
-    opacity: 0;
-}
-
-.project-panel.is-open > div > div {
-    opacity: 1;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-    .project-panel {
-        transition: grid-template-rows 650ms cubic-bezier(0.32, 0.72, 0, 1);
-    }
-
-    .panel-figure img {
-        transition: opacity 450ms ease-out;
-    }
-
-    .project-panel > div > div {
-        transition: opacity 300ms ease-out;
-    }
-
-    .project-panel.is-open > div > div {
-        transition: opacity 500ms ease-out 160ms;
-    }
-}
-
-/* Deretan foto meluber sampai tepi layar (seperti BIG), tetap sejajar dengan isi halaman saat belum digulir. */
-.project-panel-bleed {
-    margin-inline: calc(50% - 50vw);
-    padding-inline: calc(50vw - 50%);
-}
-
-/* Gulir halus: kerja tata letak dan lukis dibatasi ke dalam panel, dan gulir ke tepi tidak memicu gestur "kembali" browser. */
-.project-panel {
-    contain: layout style;
-}
-
-.project-panel-bleed {
-    --strip-h: 52vh;
-    height: var(--strip-h);
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
 }
 
 @media (min-width: 768px) {
-    .project-panel-bleed {
-        --strip-h: 64vh;
+    .photo-row {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 1.5rem;
     }
-}
 
-/* Lebar foto dihitung dari tinggi deretan dan rasio aslinya, supaya kotaknya persis seukuran gambar (tanpa sisa kosong). */
-/* Foto di luar layar tidak dilukis (content-visibility), tetapi ukurannya tetap terpesan agar gulirnya tidak bergeser. */
-.panel-figure {
-    width: calc((var(--strip-h) - 3rem) * var(--r));
-    content-visibility: auto;
-    contain-intrinsic-width: calc((var(--strip-h) - 3rem) * var(--r));
-    contain-intrinsic-height: var(--strip-h);
-}
-
-.panel-figure img {
-    opacity: 0;
-}
-
-.panel-figure img.is-loaded {
-    opacity: 1;
-}
-
-.snap-align-none {
-    scroll-snap-align: none;
-}
-
-/* Luberan sampai tepi layar tidak boleh memunculkan scrollbar horizontal pada halaman. */
-html,
-body {
-    overflow-x: clip;
-}
-
-.no-scrollbar {
-    scrollbar-width: none;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-    display: none;
-}
-
-[data-scroller-dragging] {
-    cursor: grabbing;
-    scroll-snap-type: none;
-}
-
-[data-scroller-dragging] * {
-    pointer-events: none;
-}
-
-a[data-project-link][aria-expanded='true'] h2 {
-    text-decoration: underline;
-    text-underline-offset: 6px;
+    .photo-cell {
+        flex: var(--r) 1 0%;
+    }
 }
 
 /* Tombol melayang Back to top: tersembunyi sampai halaman di-scroll, lalu naik halus dan memudar masuk. */

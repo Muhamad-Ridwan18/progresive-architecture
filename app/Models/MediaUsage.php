@@ -19,6 +19,7 @@ class MediaUsage extends Model
         return [
             'focal' => 'array',
             'sort_order' => 'integer',
+            'join_previous' => 'boolean',
         ];
     }
 

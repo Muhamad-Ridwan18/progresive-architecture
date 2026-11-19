@@ -33,6 +33,7 @@ class AttachMedia
             'caption' => $attributes['caption'] ?? null,
             'note' => $attributes['note'] ?? null,
             'note_by' => $attributes['note_by'] ?? null,
+            'join_previous' => (bool) ($attributes['join_previous'] ?? false),
             'focal' => $attributes['focal'] ?? null,
         ]);
     }

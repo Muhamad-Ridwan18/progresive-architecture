@@ -72,6 +72,7 @@ trait HasDraftMedia
                 'caption' => $usage->caption,
                 'note' => $usage->note,
                 'note_by' => $usage->note_by,
+                'join_previous' => $usage->join_previous,
                 'focal' => $usage->focal,
             ]);
         }
@@ -85,7 +86,7 @@ trait HasDraftMedia
         return $this->usages($draft)
             ->sortBy([['role', 'asc'], ['sort_order', 'asc'], ['id', 'asc']])
             ->map(fn (MediaUsage $u): array => [
-                $u->role, $u->media_file_id, $u->sort_order, $u->alt_text, $u->caption, $u->note, $u->note_by, $u->focal,
+                $u->role, $u->media_file_id, $u->sort_order, $u->alt_text, $u->caption, $u->note, $u->note_by, $u->join_previous, $u->focal,
             ])
             ->values()
             ->toJson();
