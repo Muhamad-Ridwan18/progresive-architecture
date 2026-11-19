@@ -296,29 +296,6 @@ body:has(#project-grid) main {
     }
 }
 
-/* Galeri proyek: foto dalam satu baris sama tinggi (lebar mengikuti rasio asli); di layar kecil bertumpuk. */
-.photo-row {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.photo-cell {
-    min-width: 0;
-}
-
-@media (min-width: 768px) {
-    .photo-row {
-        flex-direction: row;
-        align-items: flex-start;
-        gap: 1.5rem;
-    }
-
-    .photo-cell {
-        flex: var(--r) 1 0%;
-    }
-}
-
 /* Tombol melayang Back to top: tersembunyi sampai halaman di-scroll, lalu naik halus dan memudar masuk. */
 #back-to-top {
     opacity: 0;

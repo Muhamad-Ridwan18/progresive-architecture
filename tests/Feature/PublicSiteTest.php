@@ -454,8 +454,9 @@ class PublicSiteTest extends TestCase
 
         // Dua grup; grup pertama berisi tiga foto dalam satu baris sama tinggi.
         $this->assertSame(2, substr_count($html, 'data-photo-group'));
-        $this->assertSame(3, substr_count($html, 'class="photo-row"'));
-        $this->assertSame(4, substr_count($html, 'class="photo-cell"'));
+        $this->assertSame(2, substr_count($html, 'data-photo-row'));
+        $this->assertSame(4, substr_count($html, 'data-photo-cell'));
+        $this->assertStringContainsString('md:grid-cols-3', $html);
     }
 
     public function test_plain_photos_without_groups_are_arranged_into_neat_rows_automatically(): void
@@ -472,10 +473,33 @@ class PublicSiteTest extends TestCase
 
         $html = $this->get(route('projects.show', $project->slug))->assertOk()->getContent();
 
-        // Satu grup otomatis; foto rasio 1,6 menutup baris setiap 2 foto: baris 2 + 2 + 1.
+        // Satu grup otomatis; lima foto menjadi dua baris simetris: 3 + 2.
         $this->assertSame(1, substr_count($html, 'data-photo-group'));
-        $this->assertSame(3, substr_count($html, 'class="photo-row"'));
-        $this->assertSame(5, substr_count($html, 'class="photo-cell"'));
+        $this->assertSame(2, substr_count($html, 'data-photo-row'));
+        $this->assertSame(5, substr_count($html, 'data-photo-cell'));
+        $this->assertStringContainsString('md:grid-cols-2', $html);
+    }
+
+    public function test_group_rows_are_symmetric_and_never_leave_a_photo_alone(): void
+    {
+        $project = $this->published('Rumah Simetris');
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
+
+        // Tujuh foto dalam satu grup menjadi baris 3 + 2 + 2, bukan 3 + 3 + 1.
+        foreach (range(2, 8) as $seed) {
+            app(AttachMedia::class)->handle($this->media($seed), $project->fresh(), 'gallery', ['sort_order' => $seed]);
+        }
+
+        app(PublishProject::class)->handle($project->fresh());
+
+        $html = $this->get(route('projects.show', $project->slug))->assertOk()->getContent();
+
+        $this->assertSame(3, substr_count($html, 'data-photo-row'));
+        $this->assertSame(7, substr_count($html, 'data-photo-cell'));
+        $this->assertSame(1, substr_count($html, 'md:grid-cols-3'));
+        $this->assertSame(2, substr_count($html, 'md:grid-cols-2'));
+        // Foto lanskap memakai rasio 3:2 yang sama di semua baris.
+        $this->assertSame(7, substr_count($html, 'aspect-ratio: 3 / 2'));
     }
 
     public function test_each_photo_group_has_one_caption_shown_below_its_photos(): void
@@ -497,10 +521,10 @@ class PublicSiteTest extends TestCase
             ->getContent();
 
         $this->assertSame(2, substr_count($html, 'data-photo-group'));
-        $this->assertSame(5, substr_count($html, 'class="photo-cell"'));
+        $this->assertSame(5, substr_count($html, 'data-photo-cell'));
 
         // Setiap caption muncul sesudah foto-foto grupnya, dan sebelum grup berikutnya.
-        $this->assertLessThan(strpos($html, 'Caption untuk dua foto pertama.'), strrpos(substr($html, 0, strpos($html, 'Caption untuk dua foto pertama.')), 'class="photo-cell"'));
+        $this->assertLessThan(strpos($html, 'Caption untuk dua foto pertama.'), strrpos(substr($html, 0, strpos($html, 'Caption untuk dua foto pertama.')), 'data-photo-cell'));
         $this->assertLessThan(strpos($html, 'Caption untuk tiga foto berikutnya.'), strpos($html, 'Caption untuk dua foto pertama.') + 1);
     }
 

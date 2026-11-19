@@ -98,40 +98,49 @@ final class PublicProject
     }
 
     /**
-     * Susun foto menjadi baris yang rapi: tiap baris berisi 1 sampai 3 foto yang nanti dibuat sama tinggi dan memenuhi lebar.
-     * Baris ditutup bila jumlah rasio foto sudah cukup lebar (>= 2,4) atau sudah 3 foto; satu foto sisa yang tidak terlalu
-     * lebar ditambahkan ke baris sebelumnya agar tidak ada foto yang menggantung sendirian.
+     * Susun foto sebuah grup menjadi baris simetris: tiap baris berisi 1 sampai 3 foto berkolom sama lebar. Baris berisi
+     * 3 foto; sisa 1 foto tidak dibiarkan sendirian (4 = 2 + 2, 7 = 3 + 2 + 2) kecuali memang hanya ada satu foto.
      *
      * @param  Collection<int, MediaUsage>  $photos
      * @return list<Collection<int, MediaUsage>>
      */
     public static function photoRows(Collection $photos): array
     {
-        $ratio = fn (MediaUsage $u): float => $u->file->width / max(1, $u->file->height);
+        $sizes = [];
+        $left = $photos->count();
 
-        $rows = [];
-        $row = collect();
+        while ($left > 0) {
+            $take = match (true) {
+                $left === 4 => 2,
+                default => min(3, $left),
+            };
 
-        foreach ($photos as $photo) {
-            $row->push($photo);
-
-            if ($row->count() === 3 || $row->sum($ratio) >= 2.4) {
-                $rows[] = $row;
-                $row = collect();
-            }
+            $sizes[] = $take;
+            $left -= $take;
         }
 
-        if ($row->isNotEmpty()) {
-            $previous = array_key_last($rows);
+        $rows = [];
+        $offset = 0;
 
-            if ($row->count() === 1 && $row->sum($ratio) < 1.5 && $previous !== null && $rows[$previous]->count() < 3) {
-                $rows[$previous]->push($row->first());
-            } else {
-                $rows[] = $row;
-            }
+        foreach ($sizes as $size) {
+            $rows[] = $photos->slice($offset, $size)->values();
+            $offset += $size;
         }
 
         return $rows;
+    }
+
+    /**
+     * Rasio tampilan seragam untuk seluruh foto dalam satu baris (dipotong rapi mengikuti titik fokus): 3:2, atau 4:5
+     * bila baris berisi 2 foto atau lebih dan semuanya potret.
+     *
+     * @param  Collection<int, MediaUsage>  $row
+     */
+    public static function rowAspect(Collection $row): string
+    {
+        $allPortrait = $row->count() > 1 && $row->every(fn (MediaUsage $u): bool => $u->file->height > $u->file->width);
+
+        return $allPortrait ? '4 / 5' : '3 / 2';
     }
 
     /** Peta hanya tampil bila kedua koordinat terisi. */
