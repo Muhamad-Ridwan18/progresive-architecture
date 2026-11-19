@@ -454,8 +454,28 @@ class PublicSiteTest extends TestCase
 
         // Dua grup; grup pertama berisi tiga foto dalam satu baris sama tinggi.
         $this->assertSame(2, substr_count($html, 'data-photo-group'));
-        $this->assertSame(2, substr_count($html, 'class="photo-row"'));
+        $this->assertSame(3, substr_count($html, 'class="photo-row"'));
         $this->assertSame(4, substr_count($html, 'class="photo-cell"'));
+    }
+
+    public function test_plain_photos_without_groups_are_arranged_into_neat_rows_automatically(): void
+    {
+        $project = $this->published('Rumah Otomatis');
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
+
+        // Lima foto lepas tanpa deskripsi dan tanpa digabung admin.
+        foreach (range(2, 6) as $seed) {
+            app(AttachMedia::class)->handle($this->media($seed), $project->fresh(), 'gallery', ['sort_order' => $seed]);
+        }
+
+        app(PublishProject::class)->handle($project->fresh());
+
+        $html = $this->get(route('projects.show', $project->slug))->assertOk()->getContent();
+
+        // Satu grup otomatis; foto rasio 1,6 menutup baris setiap 2 foto: baris 2 + 2 + 1.
+        $this->assertSame(1, substr_count($html, 'data-photo-group'));
+        $this->assertSame(3, substr_count($html, 'class="photo-row"'));
+        $this->assertSame(5, substr_count($html, 'class="photo-cell"'));
     }
 
     public function test_the_first_gallery_photo_always_starts_a_group_even_if_marked_joined(): void

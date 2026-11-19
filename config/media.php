@@ -27,8 +27,9 @@ return [
     'max_files_per_batch' => 20,
 
     // Batas piksel total per gambar. Melindungi RAM server dari gambar "bom dekompresi".
-    // Nilai awal usulan; keputusan final ada di SRS Bagian 15 butir 3.
-    'max_pixels' => (int) env('MEDIA_MAX_PIXELS', 50_000_000),
+    // 80 MP menampung foto kamera resolusi tinggi (mis. 10.400 x 6.933 = 72 MP, sekitar 600 MB memori saat diproses;
+    // lihat processing_memory_limit). Turunkan lewat MEDIA_MAX_PIXELS bila memori server terbatas.
+    'max_pixels' => (int) env('MEDIA_MAX_PIXELS', 80_000_000),
     'max_dimension' => (int) env('MEDIA_MAX_DIMENSION', 12_000),
 
     // Antrean pemrosesan gambar. Bawaan `default` agar worker standar (`php artisan queue:work`)
@@ -37,8 +38,8 @@ return [
     'queue' => env('MEDIA_QUEUE', 'default'),
 
     // Batas memori PHP yang dipakai job saat memproses gambar. Hasil ukur (GD): ±200 MB untuk
-    // foto 24 MP dan ±315 MB untuk 48 MP. Diproses satu per satu, jadi cukup satu worker.
-    'processing_memory_limit' => env('MEDIA_PROCESSING_MEMORY', '768M'),
+    // foto 24 MP dan ±315 MB untuk 48 MP (±470 MB untuk 72 MP). Diproses satu per satu, jadi cukup satu worker.
+    'processing_memory_limit' => env('MEDIA_PROCESSING_MEMORY', '896M'),
 
     // Pembersihan (SRS 12.3 dan 12.9).
     // - Unggahan yang tidak pernah dipakai: dibuang setelah sekian jam (SRS 15 butir 4, usulan 24 jam).

@@ -57,7 +57,71 @@ final class PublicProject
             $groups[array_key_last($groups)]['photos']->push($usage);
         }
 
-        return $groups;
+        return self::mergePlainPhotos($groups);
+    }
+
+    /**
+     * Foto lepas tanpa deskripsi yang berurutan digabung otomatis menjadi satu grup supaya tersusun rapi dalam baris
+     * (tanpa admin perlu menggabungkannya satu per satu). Grup yang digabung admin atau yang punya deskripsi tidak diubah.
+     *
+     * @param  list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string}>  $groups
+     * @return list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string}>
+     */
+    private static function mergePlainPhotos(array $groups): array
+    {
+        $out = [];
+
+        foreach ($groups as $group) {
+            $plain = $group['photos']->count() === 1 && $group['note'] === null;
+            $last = array_key_last($out);
+
+            if ($plain && $last !== null && ($out[$last]['auto'] ?? false)) {
+                $out[$last]['photos']->push($group['photos']->first());
+
+                continue;
+            }
+
+            $out[] = $group + ['auto' => $plain];
+        }
+
+        return array_map(fn (array $g): array => ['photos' => $g['photos'], 'note' => $g['note'], 'note_by' => $g['note_by']], $out);
+    }
+
+    /**
+     * Susun foto menjadi baris yang rapi: tiap baris berisi 1 sampai 3 foto yang nanti dibuat sama tinggi dan memenuhi lebar.
+     * Baris ditutup bila jumlah rasio foto sudah cukup lebar (>= 2,4) atau sudah 3 foto; satu foto sisa yang tidak terlalu
+     * lebar ditambahkan ke baris sebelumnya agar tidak ada foto yang menggantung sendirian.
+     *
+     * @param  Collection<int, MediaUsage>  $photos
+     * @return list<Collection<int, MediaUsage>>
+     */
+    public static function photoRows(Collection $photos): array
+    {
+        $ratio = fn (MediaUsage $u): float => $u->file->width / max(1, $u->file->height);
+
+        $rows = [];
+        $row = collect();
+
+        foreach ($photos as $photo) {
+            $row->push($photo);
+
+            if ($row->count() === 3 || $row->sum($ratio) >= 2.4) {
+                $rows[] = $row;
+                $row = collect();
+            }
+        }
+
+        if ($row->isNotEmpty()) {
+            $previous = array_key_last($rows);
+
+            if ($row->count() === 1 && $row->sum($ratio) < 1.5 && $previous !== null && $rows[$previous]->count() < 3) {
+                $rows[$previous]->push($row->first());
+            } else {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
     }
 
     /** Peta hanya tampil bila kedua koordinat terisi. */

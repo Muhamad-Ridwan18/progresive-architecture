@@ -37,7 +37,7 @@
                    style="display:none">
         </label>
         <span style="margin-left:8px;font-size:12px;opacity:.6">
-            JPG, PNG, atau WebP · maks {{ (int) (config('media.max_size_kb') / 1024) }} MB per gambar
+            JPG, PNG, atau WebP · maks {{ (int) (config('media.max_size_kb') / 1024) }} MB dan {{ (int) (config('media.max_pixels') / 1_000_000) }} megapiksel per gambar
             @if (! $this->isCover())
                 · maks {{ config('media.max_files_per_batch') }} sekali unggah
             @endif

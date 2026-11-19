@@ -70,8 +70,8 @@
 
                         <div data-photo-group class="grid items-start gap-6 md:grid-cols-12 md:gap-x-8">
                             <div class="space-y-4 md:space-y-6 {{ $hasText ? 'md:col-span-8' : 'md:col-span-12' }}">
-                                {{-- Maksimal 3 foto per baris; grup yang lebih besar turun ke baris berikutnya. --}}
-                                @foreach ($group['photos']->chunk(3) as $row)
+                                {{-- Baris disusun rapi (1 sampai 3 foto sama tinggi yang memenuhi lebar); lihat PublicProject::photoRows(). --}}
+                                @foreach (\App\Support\PublicProject::photoRows($group['photos']) as $row)
                                     @php
                                         $sum = $row->sum(fn ($u) => $u->file->width / max(1, $u->file->height));
                                     @endphp
