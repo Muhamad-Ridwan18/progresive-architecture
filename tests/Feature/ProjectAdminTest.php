@@ -323,8 +323,12 @@ class ProjectAdminTest extends TestCase
         $this->assertStringContainsString('livewire-upload-progress', $html);
         $this->assertStringContainsString('wire:input.debounce.700ms', $html);
         $this->assertStringContainsString('beforeunload', $html);
-        $this->assertStringContainsString('Gabung dengan foto di atas', $html);
-        $this->assertSame(1, substr_count($html, 'Gabung dengan foto di atas (satu deskripsi)'), 'Foto pertama tidak punya pilihan gabung.');
+        $this->assertStringContainsString('Satu grup dengan foto di atas', $html);
+        $this->assertSame(1, substr_count($html, 'Satu grup dengan foto di atas</label>') + substr_count($html, 'Satu grup dengan foto di atas
+'), 'Foto pertama tidak punya pilihan gabung.');
+        // Caption ada di tingkat grup (bukan per foto) pada galeri proyek.
+        $this->assertStringContainsString('Caption untuk grup ini', $html);
+        $this->assertStringNotContainsString('placeholder="Caption (opsional)"', $html);
     }
 
     public function test_joining_photos_is_only_available_in_the_project_gallery(): void

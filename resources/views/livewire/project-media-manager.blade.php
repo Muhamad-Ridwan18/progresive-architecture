@@ -71,6 +71,33 @@
         <div style="font-size:13px;opacity:.6">Belum ada gambar.</div>
     @endif
 
+    @php
+        // Galeri proyek: foto dikelompokkan. Satu grup = beberapa foto yang berbagi satu caption (tampil di bawah foto-fotonya).
+        $groupInfo = [];
+
+        if ($this->isProjectGallery()) {
+            $number = 0;
+            $currentId = null;
+
+            foreach ($this->items as $index => $groupItem) {
+                if ($index === 0 || ! $groupItem->join_previous) {
+                    $number++;
+                    $currentId = $groupItem->id;
+                    $groupInfo[$currentId] = ['no' => $number, 'size' => 0, 'first' => $groupItem];
+                }
+
+                $groupInfo[$currentId]['size']++;
+            }
+        }
+    @endphp
+
+    @if ($this->isProjectGallery() && $this->items->count() > 1)
+        <div style="font-size:12px;opacity:.75;line-height:1.5">
+            Foto dikelompokkan: tiap grup punya <strong>satu caption</strong> yang tampil di bawah foto-fotonya. Centang
+            <em>"Satu grup dengan foto di atas"</em> pada sebuah foto untuk menggabungkannya ke grup sebelumnya, atau hilangkan centang untuk memulai grup baru.
+        </div>
+    @endif
+
     {{-- Daftar gambar --}}
     <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax({{ $this->isTeamPhoto() ? '240px' : ($this->isCover() ? '320px' : '220px') }},1fr))">
         @foreach ($this->items as $item)
@@ -82,6 +109,23 @@
             @endphp
 
             @php $joined = $this->isProjectGallery() && $item->join_previous && ! $loop->first; @endphp
+
+            @if (isset($groupInfo[$item->id]))
+                {{-- Awal grup: caption grup (dan pengucap kutipan) disimpan pada foto pertama grup. --}}
+                <div wire:key="group-{{ $item->id }}" style="grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:8px;background:rgba(128,128,128,.08);{{ $loop->first ? '' : 'margin-top:8px;' }}">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
+                        <span>Grup {{ $groupInfo[$item->id]['no'] }}</span>
+                        <span style="font-weight:400;opacity:.7">{{ $groupInfo[$item->id]['size'] }} foto</span>
+                    </div>
+                    <textarea placeholder="Caption untuk grup ini (tampil di bawah foto-fotonya)" rows="2" maxlength="3000" data-autosave
+                              wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'note', $event.target.value)"
+                              style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent;resize:vertical">{{ $item->note }}</textarea>
+                    <input type="text" placeholder="Pengucap kutipan (opsional): bila diisi, caption tampil sebagai kutipan besar. Mis. Nama, Jabatan" maxlength="255" data-autosave
+                           value="{{ $item->note_by }}"
+                           wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'note_by', $event.target.value)"
+                           style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
+                </div>
+            @endif
 
             <div wire:key="usage-{{ $item->id }}" style="border:1px solid rgba(128,128,128,.3);{{ $joined ? 'border-left:4px solid var(--primary-600,#475569);' : '' }}border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px">
 
@@ -141,34 +185,19 @@
                        value="{{ $item->alt_text }}"
                        wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'alt_text', $event.target.value)"
                        style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
-                @if (! $this->isCover())
+                {{-- Caption per foto hanya untuk galeri selain galeri proyek (About, dll.); galeri proyek memakai caption grup. --}}
+                @if (! $this->isCover() && ! $this->isProjectGallery())
                     <input type="text" placeholder="Caption (opsional)" maxlength="1000" data-autosave
                            value="{{ $item->caption }}"
                            wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'caption', $event.target.value)"
                            style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
                 @endif
 
-                @if ($this->isProjectGallery())
-                    {{-- Grup foto: beberapa foto berbagi satu deskripsi. Foto pertama galeri selalu memulai grup. --}}
-                    @unless ($loop->first)
-                        <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer">
-                            <input type="checkbox" @checked($joined) wire:change="setJoin({{ $item->id }}, $event.target.checked)">
-                            Gabung dengan foto di atas (satu deskripsi)
-                        </label>
-                    @endunless
-
-                    @if ($joined)
-                        <div style="font-size:12px;opacity:.7">Deskripsi mengikuti foto pertama di grup ini.</div>
-                    @else
-                        {{-- Deskripsi grup: tampil di samping foto-foto grup ini di halaman proyek (narasi atau kutipan). --}}
-                        <textarea placeholder="Deskripsi untuk foto ini (dan foto yang digabung di bawahnya)" rows="3" maxlength="3000" data-autosave
-                                  wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'note', $event.target.value)"
-                                  style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent;resize:vertical">{{ $item->note }}</textarea>
-                        <input type="text" placeholder="Pengucap kutipan (opsional), mis. Nama, Jabatan" maxlength="255" data-autosave
-                               value="{{ $item->note_by }}"
-                               wire:input.debounce.700ms="updateMeta({{ $item->id }}, 'note_by', $event.target.value)"
-                               style="width:100%;font-size:13px;padding:6px 8px;border:1px solid rgba(128,128,128,.4);border-radius:6px;background:transparent">
-                    @endif
+                @if ($this->isProjectGallery() && ! $loop->first)
+                    <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer">
+                        <input type="checkbox" @checked($joined) wire:change="setJoin({{ $item->id }}, $event.target.checked)">
+                        Satu grup dengan foto di atas
+                    </label>
                 @endif
 
                 <div style="display:flex;gap:6px;flex-wrap:wrap">

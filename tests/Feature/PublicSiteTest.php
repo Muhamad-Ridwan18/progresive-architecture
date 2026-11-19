@@ -478,6 +478,42 @@ class PublicSiteTest extends TestCase
         $this->assertSame(5, substr_count($html, 'class="photo-cell"'));
     }
 
+    public function test_each_photo_group_has_one_caption_shown_below_its_photos(): void
+    {
+        $project = $this->published('Rumah Caption');
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
+
+        // Grup 1: 2 foto dengan satu caption. Grup 2: 3 foto dengan satu caption.
+        app(AttachMedia::class)->handle($this->media(2), $project->fresh(), 'gallery', ['sort_order' => 1, 'note' => 'Caption untuk dua foto pertama.']);
+        app(AttachMedia::class)->handle($this->media(3), $project->fresh(), 'gallery', ['sort_order' => 2, 'join_previous' => true]);
+        app(AttachMedia::class)->handle($this->media(4), $project->fresh(), 'gallery', ['sort_order' => 3, 'note' => 'Caption untuk tiga foto berikutnya.']);
+        app(AttachMedia::class)->handle($this->media(5), $project->fresh(), 'gallery', ['sort_order' => 4, 'join_previous' => true]);
+        app(AttachMedia::class)->handle($this->media(6), $project->fresh(), 'gallery', ['sort_order' => 5, 'join_previous' => true]);
+        app(PublishProject::class)->handle($project->fresh());
+
+        $html = $this->get(route('projects.show', $project->slug))->assertOk()
+            ->assertSee('Caption untuk dua foto pertama.')
+            ->assertSee('Caption untuk tiga foto berikutnya.')
+            ->getContent();
+
+        $this->assertSame(2, substr_count($html, 'data-photo-group'));
+        $this->assertSame(5, substr_count($html, 'class="photo-cell"'));
+
+        // Setiap caption muncul sesudah foto-foto grupnya, dan sebelum grup berikutnya.
+        $this->assertLessThan(strpos($html, 'Caption untuk dua foto pertama.'), strrpos(substr($html, 0, strpos($html, 'Caption untuk dua foto pertama.')), 'class="photo-cell"'));
+        $this->assertLessThan(strpos($html, 'Caption untuk tiga foto berikutnya.'), strpos($html, 'Caption untuk dua foto pertama.') + 1);
+    }
+
+    public function test_old_per_photo_captions_are_kept_as_the_group_caption(): void
+    {
+        $project = $this->published('Rumah Lama');
+        app(AttachMedia::class)->handle($this->media(1), $project->fresh(), 'cover');
+        app(AttachMedia::class)->handle($this->media(2), $project->fresh(), 'gallery', ['sort_order' => 1, 'caption' => 'Caption lama satu']);
+        app(PublishProject::class)->handle($project->fresh());
+
+        $this->get(route('projects.show', $project->slug))->assertOk()->assertSee('Caption lama satu');
+    }
+
     public function test_the_first_gallery_photo_always_starts_a_group_even_if_marked_joined(): void
     {
         $project = $this->published('Rumah Pertama');

@@ -58,7 +58,7 @@
             </div>
         @endif
 
-        {{-- Galeri: foto dikelompokkan; tiap grup (1 sampai beberapa foto) berbagi satu deskripsi di sampingnya. Foto dalam
+        {{-- Galeri: foto dikelompokkan; tiap grup (1 sampai beberapa foto) berbagi satu caption di bawahnya. Foto dalam
              satu baris dibuat sama tinggi (lebarnya mengikuti rasio asli) agar rapi. Foto membuka lightbox. --}}
         @if ($project->gallery->isNotEmpty())
             @php $photoNumber = 0; @endphp
@@ -66,10 +66,8 @@
             <section aria-label="Gallery" class="mt-16 md:mt-24">
                 <div id="gallery" data-gallery class="space-y-14 md:space-y-24">
                     @foreach ($project->galleryGroups() as $group)
-                        @php $hasText = filled($group['note']); @endphp
-
-                        <div data-photo-group class="grid items-start gap-6 md:grid-cols-12 md:gap-x-8">
-                            <div class="space-y-4 md:space-y-6 {{ $hasText ? 'md:col-span-8' : 'md:col-span-12' }}">
+                        <div data-photo-group>
+                            <div class="space-y-4 md:space-y-6">
                                 {{-- Baris disusun rapi (1 sampai 3 foto sama tinggi yang memenuhi lebar); lihat PublicProject::photoRows(). --}}
                                 @foreach (\App\Support\PublicProject::photoRows($group['photos']) as $row)
                                     @php
@@ -85,7 +83,7 @@
                                                 // Resolusi tinggi dimuat saat foto dibuka (SRS FR-FE-044).
                                                 $largeWidth = $file->bestVariant(2560) ?? $file->width;
                                                 $largeHeight = (int) round($largeWidth * $file->height / max(1, $file->width));
-                                                $share = max(20, (int) round(($hasText ? 62 : 92) * $ratio / max(0.01, $sum)));
+                                                $share = max(20, (int) round(92 * $ratio / max(0.01, $sum)));
                                             @endphp
 
                                             <figure class="photo-cell" style="--r: {{ round($ratio, 4) }}">
@@ -96,25 +94,22 @@
                                                    aria-label="Open photo {{ $photoNumber }} of {{ $project->gallery->count() }}">
                                                     <x-responsive-image :usage="$photo" :alt="$project->name" :sizes="'(min-width: 768px) '.$share.'vw, 100vw'" />
                                                 </a>
-                                                @if ($photo->caption)
-                                                    <figcaption class="mt-2 text-small text-ink-muted">{{ $photo->caption }}</figcaption>
-                                                @endif
                                             </figure>
                                         @endforeach
                                     </div>
                                 @endforeach
                             </div>
 
-                            {{-- Deskripsi grup: narasi, atau kutipan bila pengucapnya diisi. --}}
-                            @if ($hasText)
-                                <div class="md:sticky md:top-24 md:col-span-4">
-                                    @if ($group['note_by'])
-                                        <blockquote>
+                            {{-- Caption grup: di bawah foto-fotonya. Kutipan bila pengucapnya diisi. --}}
+                            @if ($group['caption'])
+                                <div class="mt-4 md:mt-6">
+                                    @if ($group['note'] && $group['note_by'])
+                                        <blockquote class="max-w-[48ch]">
                                             <p class="whitespace-pre-line text-h2 tracking-[-0.02em]">&ldquo;{{ $group['note'] }}&rdquo;</p>
                                             <footer class="mt-4 text-label uppercase tracking-[0.08em] text-ink-muted">{{ $group['note_by'] }}</footer>
                                         </blockquote>
                                     @else
-                                        <x-prose :text="$group['note']" class="text-body" />
+                                        <x-prose :text="$group['caption']" class="max-w-[62ch] text-small text-ink-muted" />
                                     @endif
                                 </div>
                             @endif

@@ -37,7 +37,10 @@ final class PublicProject
      * Galeri dikelompokkan: foto yang digabung dengan foto di atasnya masuk ke grup yang sama dan berbagi satu
      * deskripsi (milik foto pertama grup). Foto pertama galeri selalu memulai grup.
      *
-     * @return list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string}>
+     * `caption` adalah teks grup yang tampil di bawah foto-fotonya: isian grup (`note`), atau, bila kosong, caption
+     * per foto yang sudah ada sebelumnya (digabung) agar data lama tidak hilang.
+     *
+     * @return list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string, caption: ?string}>
      */
     public function galleryGroups(): array
     {
@@ -57,6 +60,13 @@ final class PublicProject
             $groups[array_key_last($groups)]['photos']->push($usage);
         }
 
+        foreach ($groups as &$group) {
+            $legacy = $group['photos']->pluck('caption')->filter(fn ($c) => filled($c))->implode(' · ');
+            $group['caption'] = $group['note'] ?? ($legacy !== '' ? $legacy : null);
+        }
+
+        unset($group);
+
         return self::mergePlainPhotos($groups);
     }
 
@@ -64,15 +74,15 @@ final class PublicProject
      * Foto lepas tanpa deskripsi yang berurutan digabung otomatis menjadi satu grup supaya tersusun rapi dalam baris
      * (tanpa admin perlu menggabungkannya satu per satu). Grup yang digabung admin atau yang punya deskripsi tidak diubah.
      *
-     * @param  list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string}>  $groups
-     * @return list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string}>
+     * @param  list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string, caption: ?string}>  $groups
+     * @return list<array{photos: Collection<int, MediaUsage>, note: ?string, note_by: ?string, caption: ?string}>
      */
     private static function mergePlainPhotos(array $groups): array
     {
         $out = [];
 
         foreach ($groups as $group) {
-            $plain = $group['photos']->count() === 1 && $group['note'] === null;
+            $plain = $group['photos']->count() === 1 && $group['caption'] === null;
             $last = array_key_last($out);
 
             if ($plain && $last !== null && ($out[$last]['auto'] ?? false)) {
@@ -84,7 +94,7 @@ final class PublicProject
             $out[] = $group + ['auto' => $plain];
         }
 
-        return array_map(fn (array $g): array => ['photos' => $g['photos'], 'note' => $g['note'], 'note_by' => $g['note_by']], $out);
+        return array_map(fn (array $g): array => ['photos' => $g['photos'], 'note' => $g['note'], 'note_by' => $g['note_by'], 'caption' => $g['caption']], $out);
     }
 
     /**
